@@ -1,6 +1,6 @@
-use image::{ImageBuffer,DynamicImage, Rgb};
-use nokhwa::{query_devices, CaptureAPIBackend, ThreadedCamera};
+use image::{DynamicImage, ImageBuffer, Rgb};
 use imageproc::edges::canny;
+use nokhwa::{query_devices, CaptureAPIBackend, ThreadedCamera};
 
 fn main() {
     let cameras = query_devices(CaptureAPIBackend::Auto).unwrap();
@@ -15,5 +15,4 @@ fn main() {
     edges.save("out/canny.jpg").unwrap();
 }
 
-fn callback(_image: ImageBuffer<Rgb<u8>, Vec<u8>>) {
-}
+fn callback(_image: ImageBuffer<Rgb<u8>, Vec<u8>>) {}
