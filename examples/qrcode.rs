@@ -5,8 +5,8 @@ fn main() {
     let results = decoder.decode(&img);
     for result in results {
         match result {
-            Ok(data) =>println!("{}", data),
-            Err(err) => println!("{}", err)
+            Ok(data) => println!("{}", data),
+            Err(err) => println!("{}", err),
         };
     }
 }
