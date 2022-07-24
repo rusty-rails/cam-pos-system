@@ -107,7 +107,7 @@ async fn fetch_frame(frame: Arc<Mutex<Frame>>, webcam: Arc<Mutex<ThreadedCamera>
             f.tracked = frame.tracked.clone();
             *frame = f;
         };
-        thread::sleep(Duration::from_millis(30));
+        thread::sleep(Duration::from_millis(40));
     }
 }
 
@@ -119,7 +119,7 @@ async fn run_tracker(tracker: Arc<Mutex<Tracker>>, frame: Arc<Mutex<Frame>>) {
             let tracked = tracker.next(&frame.luma);
             frame.tracked = tracked.to_rgb8();
         };
-        thread::sleep(Duration::from_millis(30));
+        thread::sleep(Duration::from_millis(25));
     }
 }
 

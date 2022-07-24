@@ -12,7 +12,7 @@ pub struct Tracker {
 
 impl Tracker {
     pub fn new(width: u32, height: u32) -> Tracker {
-        let window_size = 64;
+        let window_size = 48;
         let psr_threshold = 7.0;
         let settings = MosseTrackerSettings {
             window_size,
