@@ -17,16 +17,27 @@
         <div class="jumbotron mt-4 p-3 mb-5 bg-light rounded shadow">
             <h1>Camera Positioning System</h1>
         </div>
-        <div class="row card justify-content-center d-grid gap-3">
-            <img id="webcam" src="/tracked" title="webcam" />
+        <div class="nav">
+            <button class="btn btn-primary" onclick="setSelectMode('train')">
+                Train </button>
+            <button class="btn btn-primary" onclick="setSelectMode('marker1')">Marker 1</button>
+            <button class="btn btn-primary" onclick="setSelectMode('marker2')">Marker 2</button>
+            <button class="btn btn-primary" onclick="setSelectMode('marker3')">Marker 3</button>
+            <button class="btn btn-primary" onclick="setSelectMode('marker4')">Marker 4</button>
         </div>
+        <div class="row card justify-content-center d-grid gap-3">
+            <div>
+                <img id="webcam" src="/tracked-stream" title="webcam" onclick="updatePosition(event)" />
+            </div>
+        </div>
+
         <hr>
     </main>
 
     <footer class="footer">
         <div class="container">
             <p id="copyright">
-                <a href="https://github.com/rusty-rails/cam-pos-system">chriamue/ornithology-pi</a>
+                <a href="https://github.com/rusty-rails/cam-pos-system">rusty-rails/cam-pos-system</a>
             </p>
         </div>
     </footer>

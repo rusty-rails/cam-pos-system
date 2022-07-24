@@ -7,7 +7,7 @@ use rusttype::{Font, Scale};
 pub struct Tracker {
     psr_threshold: f32,
     window_size: u32,
-    tracker: MultiMosseTracker,
+    pub tracker: MultiMosseTracker,
 }
 
 impl Tracker {
