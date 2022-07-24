@@ -10,6 +10,8 @@ repository = "https://github.com/rusty-rails/cam-pos-system"
 
 [dependencies]
 bardecoder = "0.3.0"
+format-bytes = "0.1"
+futures = "0.3.21"
 image = { version = "0.23.1", default-features = false, features = [
     "png",
     "jpeg",

@@ -4,12 +4,17 @@ use image::{DynamicImage, ImageBuffer, Luma, Rgb};
 pub struct Frame {
     pub raw: ImageBuffer<Rgb<u8>, Vec<u8>>,
     pub luma: ImageBuffer<Luma<u8>, Vec<u8>>,
+    pub tracked: ImageBuffer<Rgb<u8>, Vec<u8>>,
 }
 
 impl Frame {
     pub fn new(raw: ImageBuffer<Rgb<u8>, Vec<u8>>) -> Frame {
         let luma = DynamicImage::ImageRgb8(raw.clone()).to_luma8();
-        Frame { raw, luma }
+        Frame {
+            raw: raw.clone(),
+            luma,
+            tracked: raw,
+        }
     }
 }
 
