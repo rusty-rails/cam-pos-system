@@ -95,17 +95,17 @@ impl<T: nalgebra::RealField + NumCast + Copy> Coords<T> {
     }
 
     pub fn set_marker1(&mut self, marker1: Point2<T>) {
-        self.q1 = marker1;
+        self.p1 = marker1;
         self.update_affine();
     }
 
     pub fn set_marker2(&mut self, marker2: Point2<T>) {
-        self.q2 = marker2;
+        self.p2 = marker2;
         self.update_affine();
     }
 
     pub fn set_marker3(&mut self, marker3: Point2<T>) {
-        self.q3 = marker3;
+        self.p3 = marker3;
         self.update_affine();
     }
 
@@ -121,7 +121,7 @@ impl<T: nalgebra::RealField + NumCast + Copy> Coords<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::relative_eq;
+    use approx::assert_relative_eq;
 
     #[test]
     fn default() {
@@ -129,15 +129,39 @@ mod tests {
         let p = Point2::new(100.0, 100.0);
         assert_ne!(coords.to_model(&p), coords.to_world(&p));
 
-        let _ = relative_eq!(
+        assert_relative_eq!(
             Point2::new(1000.0, 1000.0),
             coords.to_model(&p),
-            epsilon = f64::EPSILON
+            epsilon = 0.001
         );
-        let _ = relative_eq!(
-            Point2::new(100.0, 100.0),
+        assert_relative_eq!(
+            Point2::new(10.0, 10.0),
             coords.to_world(&p),
-            epsilon = f64::EPSILON
+            epsilon = 0.001
+        );
+    }
+
+    #[test]
+    fn set_marker() {
+        let mut coords = Coords::default();
+        let marker1 = Point2::new(100.0, 50.0);
+        let marker2 = Point2::new(0.0, 50.0);
+        let point = Point2::new(50.0, 50.0);
+
+        coords.set_marker1(marker1);
+        coords.set_marker2(marker2);
+
+        assert_relative_eq!(
+            Point2::new(500.0, 0.0),
+            coords.to_model(&point),
+            epsilon = 0.001
+        );
+
+        let point2 = Point2::new(0.0, 0.0);
+        assert_relative_eq!(
+            Point2::new(0.0, -1000.0),
+            coords.to_model(&point2),
+            epsilon = 0.001
         );
     }
 }
