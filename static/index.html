@@ -23,14 +23,17 @@
             <button class="btn btn-primary" onclick="setSelectMode('marker1')">Marker 1</button>
             <button class="btn btn-primary" onclick="setSelectMode('marker2')">Marker 2</button>
             <button class="btn btn-primary" onclick="setSelectMode('marker3')">Marker 3</button>
-            <button class="btn btn-primary" onclick="setSelectMode('marker4')">Marker 4</button>
         </div>
         <div class="row card justify-content-center d-grid gap-3">
             <div>
                 <img id="webcam" src="/tracked-stream" title="webcam" onclick="updatePosition(event)" />
             </div>
         </div>
-
+        <div class="nav">
+            <button class="btn btn-primary" onclick="loadCoords()">
+                Coords </button>
+            <p id="coords"></p>
+        </div>
         <hr>
     </main>
 

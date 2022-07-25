@@ -1,7 +1,9 @@
+use cam_pos_system::coords::Coords;
 use cam_pos_system::frame::Frame;
 use cam_pos_system::stream::MJpeg;
 use cam_pos_system::tracker::Tracker;
 use image::{DynamicImage, ImageBuffer, Rgb};
+use nalgebra::Point2;
 use nokhwa::ThreadedCamera;
 use rocket::fs::FileServer;
 use rocket::http::{ContentType, Status};
@@ -9,7 +11,7 @@ use rocket::response::stream::ByteStream;
 use rocket::serde::json::Json;
 use rocket::State;
 use rocket::{get, options, post, routes};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -73,6 +75,45 @@ fn tracked_stream(
     )
 }
 
+#[derive(Serialize, Deserialize)]
+struct ObjectCoords {
+    id: u32,
+    world_x: f32,
+    world_y: f32,
+    model_x: f32,
+    model_y: f32,
+}
+
+#[get("/coords")]
+fn get_coords(
+    frame: &'_ State<Arc<Mutex<Frame>>>,
+    tracker: &'_ State<Arc<Mutex<Tracker>>>,
+    coords: &'_ State<Arc<Mutex<Coords<f32>>>>,
+) -> Json<Vec<ObjectCoords>> {
+    let mut object_coords = Vec::new();
+    let predictions = {
+        let frame = frame.lock().unwrap();
+        let mut tracker = tracker.lock().unwrap();
+        tracker.tracker.track(&frame.luma)
+    };
+    let coords = coords.lock().unwrap();
+    for (obj_id, pred) in predictions.iter() {
+        let world_x = pred.location.0 as f32;
+        let world_y = pred.location.1 as f32;
+        let world_point = Point2::new(world_x, world_y);
+        let model_point = coords.to_model(&world_point);
+        object_coords.push(ObjectCoords {
+            id: obj_id.clone(),
+            world_x,
+            world_y,
+            model_x: model_point.x,
+            model_y: model_point.y,
+        });
+    }
+
+    Json(object_coords)
+}
+
 #[derive(Deserialize)]
 struct UpdatePositionRequest {
     id: u32,
@@ -84,15 +125,22 @@ struct UpdatePositionRequest {
 fn post_update_position(
     frame: &'_ State<Arc<Mutex<Frame>>>,
     tracker: &'_ State<Arc<Mutex<Tracker>>>,
+    coords: &'_ State<Arc<Mutex<Coords<f32>>>>,
     request: Json<UpdatePositionRequest>,
 ) {
     let data = request.into_inner();
-    println!("{}, {}, {}", data.id, data.x, data.y);
     let frame = frame.lock().unwrap();
     let mut tracker = tracker.lock().unwrap();
     tracker
         .tracker
         .add_target(data.id, (data.x, data.y), &frame.luma);
+    let mut coords = coords.lock().unwrap();
+    match data.id {
+        1 => coords.set_marker1(Point2::new(data.x as f32, data.y as f32)),
+        2 => coords.set_marker2(Point2::new(data.x as f32, data.y as f32)),
+        3 => coords.set_marker3(Point2::new(data.x as f32, data.y as f32)),
+        _ => (),
+    }
 }
 
 #[options("/update-position")]
@@ -148,6 +196,14 @@ async fn main() {
 
     let tracker_thread = tokio::spawn(run_tracker(tracker.clone(), frame.clone()));
 
+    let (w, h) = (width as f32, height as f32);
+
+    let coords = Arc::new(Mutex::new(Coords::new(
+        Point2::new(w, 0.0),
+        Point2::new(0.0, 0.0),
+        Point2::new(0.0, h),
+    )));
+
     let launcher = rocket::build()
         .mount("/", FileServer::from("static"))
         .mount(
@@ -157,13 +213,15 @@ async fn main() {
                 luma,
                 tracked,
                 tracked_stream,
+                get_coords,
                 post_update_position,
                 options_update_position
             ],
         )
         .manage(webcam)
         .manage(frame)
-        .manage(tracker);
+        .manage(tracker)
+        .manage(coords);
     let _server = launcher.launch().await.unwrap();
     fetch_frame_thread.abort();
     tracker_thread.abort();

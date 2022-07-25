@@ -9,6 +9,7 @@ readme = "README.md"
 repository = "https://github.com/rusty-rails/cam-pos-system"
 
 [dependencies]
+approx = "0.5.1"
 bardecoder = "0.3.0"
 format-bytes = "0.1"
 futures = "0.3.21"

@@ -1,6 +1,7 @@
 use nalgebra::{Affine2, Matrix3, Point2};
 use num::NumCast;
 
+// p is real world, q is model world
 pub struct Coords<T: nalgebra::RealField + Copy> {
     p1: Point2<T>,
     p2: Point2<T>,
@@ -14,12 +15,12 @@ pub struct Coords<T: nalgebra::RealField + Copy> {
 impl<T: nalgebra::RealField + NumCast + Copy> Default for Coords<T> {
     fn default() -> Self {
         let mut coords = Coords {
-            p1: Point2::new(num::cast(1000.0).unwrap(), num::cast(0.0).unwrap()),
+            p1: Point2::new(num::cast(100.0).unwrap(), num::cast(0.0).unwrap()),
             p2: Point2::new(num::cast(0.0).unwrap(), num::cast(0.0).unwrap()),
-            p3: Point2::new(num::cast(0.0).unwrap(), num::cast(1000.0).unwrap()),
-            q1: Point2::new(num::cast(100.0).unwrap(), num::cast(0.0).unwrap()),
+            p3: Point2::new(num::cast(0.0).unwrap(), num::cast(100.0).unwrap()),
+            q1: Point2::new(num::cast(1000.0).unwrap(), num::cast(0.0).unwrap()),
             q2: Point2::new(num::cast(0.0).unwrap(), num::cast(0.0).unwrap()),
-            q3: Point2::new(num::cast(0.0).unwrap(), num::cast(100.0).unwrap()),
+            q3: Point2::new(num::cast(0.0).unwrap(), num::cast(1000.0).unwrap()),
             affine: Affine2::identity(),
         };
         coords.update_affine();
@@ -29,9 +30,9 @@ impl<T: nalgebra::RealField + NumCast + Copy> Default for Coords<T> {
 
 impl<T: nalgebra::RealField + NumCast + Copy> Coords<T> {
     pub fn new(p1: Point2<T>, p2: Point2<T>, p3: Point2<T>) -> Coords<T> {
-        let q1: Point2<T> = Point2::new(num::cast(100.0).unwrap(), num::cast(0.0).unwrap());
+        let q1: Point2<T> = Point2::new(num::cast(1000.0).unwrap(), num::cast(0.0).unwrap());
         let q2 = Point2::new(num::cast(0.0).unwrap(), num::cast(0.0).unwrap());
-        let q3 = Point2::new(num::cast(0.0).unwrap(), num::cast(100.0).unwrap());
+        let q3 = Point2::new(num::cast(0.0).unwrap(), num::cast(1000.0).unwrap());
         let mut coords = Coords {
             p1,
             p2,
@@ -50,68 +51,93 @@ impl<T: nalgebra::RealField + NumCast + Copy> Coords<T> {
     pub fn update_affine(&mut self) {
         let p = Matrix3::new(
             self.p1.x,
-            self.p1.y,
-            num::cast(1.0).unwrap(),
-            self.p2.y,
             self.p2.x,
-            num::cast(1.0).unwrap(),
             self.p3.x,
+            self.p1.y,
+            self.p2.y,
             self.p3.y,
+            num::cast(1.0).unwrap(),
+            num::cast(1.0).unwrap(),
             num::cast(1.0).unwrap(),
         );
         let q = Matrix3::new(
             self.q1.x,
-            self.q1.y,
-            num::cast(1.0).unwrap(),
-            self.q2.y,
             self.q2.x,
-            num::cast(1.0).unwrap(),
             self.q3.x,
+            self.q1.y,
+            self.q2.y,
             self.q3.y,
+            num::cast(1.0).unwrap(),
+            num::cast(1.0).unwrap(),
             num::cast(1.0).unwrap(),
         );
         let t = p * q.try_inverse().unwrap();
-
-        println!("{:?}", self.affine);
         let affine = Affine2::from_matrix_unchecked(t);
-
-        println!("{:?}", affine);
         self.affine = affine;
     }
 
     pub fn set_point1(&mut self, p1: Point2<T>, q1: Point2<T>) {
         self.p1 = p1;
         self.q1 = q1;
+        self.update_affine();
     }
 
     pub fn set_point2(&mut self, p2: Point2<T>, q2: Point2<T>) {
         self.p2 = p2;
         self.q2 = q2;
+        self.update_affine();
     }
 
     pub fn set_point3(&mut self, p3: Point2<T>, q3: Point2<T>) {
         self.p3 = p3;
         self.q3 = q3;
+        self.update_affine();
     }
 
-    pub fn to_coord1(&self, point: &Point2<T>) -> Point2<T> {
-        self.affine.transform_point(&point)
+    pub fn set_marker1(&mut self, marker1: Point2<T>) {
+        self.q1 = marker1;
+        self.update_affine();
     }
 
-    pub fn to_coord2(&self, point: &Point2<T>) -> Point2<T> {
+    pub fn set_marker2(&mut self, marker2: Point2<T>) {
+        self.q2 = marker2;
+        self.update_affine();
+    }
+
+    pub fn set_marker3(&mut self, marker3: Point2<T>) {
+        self.q3 = marker3;
+        self.update_affine();
+    }
+
+    pub fn to_model(&self, point: &Point2<T>) -> Point2<T> {
         self.affine.inverse_transform_point(&point)
+    }
+
+    pub fn to_world(&self, point: &Point2<T>) -> Point2<T> {
+        self.affine.transform_point(&point)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::relative_eq;
 
     #[test]
     fn default() {
         let coords = Coords::default();
-        let p1 = Point2::new(1000.0, 1000.0);
-        assert_ne!(coords.to_coord1(&p1), coords.to_coord2(&p1));
-        assert_eq!(Point2::new(1000.0, 1000.0), coords.to_coord2(&p1));
+        let p = Point2::new(100.0, 100.0);
+        assert_ne!(coords.to_model(&p), coords.to_world(&p));
+
+        let _ = relative_eq!(
+            Point2::new(1000.0, 1000.0),
+            coords.to_model(&p),
+            epsilon = f64::EPSILON
+        );
+        let _ = relative_eq!(
+            Point2::new(100.0, 100.0),
+            coords.to_world(&p),
+            epsilon = f64::EPSILON
+        );
     }
 }
