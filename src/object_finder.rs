@@ -12,10 +12,7 @@ impl ObjectFinder {
     }
 
     fn run_match_template(&self, image: &GrayImage, method: MatchTemplateMethod) -> Extremes<f32> {
-        let mut summed = ImageBuffer::<Luma<f32>, Vec<f32>>::new(
-            image.width(),
-            image.height(),
-        );
+        let mut summed = ImageBuffer::<Luma<f32>, Vec<f32>>::new(image.width(), image.height());
 
         for template in &self.templates {
             let result = match_template(&image, template, method);
@@ -29,7 +26,8 @@ impl ObjectFinder {
     }
 
     pub fn find(&self, image: &GrayImage) -> Point2<f32> {
-        let extremes = self.run_match_template(image, MatchTemplateMethod::SumOfSquaredErrorsNormalized);
+        let extremes =
+            self.run_match_template(image, MatchTemplateMethod::SumOfSquaredErrorsNormalized);
         Point2::new(
             extremes.min_value_location.0 as f32,
             extremes.min_value_location.1 as f32,

@@ -11,6 +11,7 @@ repository = "https://github.com/rusty-rails/cam-pos-system"
 [dependencies]
 approx = "0.5.1"
 bardecoder = "0.3.0"
+float-ord = "0.3.2"
 format-bytes = "0.1"
 futures = "0.3.21"
 image = { version = "0.23.1", default-features = false, features = [
@@ -27,3 +28,5 @@ rusttype = "0.9.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.20", features = ["full"] }
+tract-onnx = { version = "=0.17.0" }
+ndarray = { version = "0.15.3" }
