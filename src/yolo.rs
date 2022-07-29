@@ -62,12 +62,8 @@ impl Yolo {
         image: &Box<DynamicImage>,
     ) -> Result<Vec<Detection>, Box<dyn std::error::Error>> {
         let image_rgb = image.to_rgb8();
-        let resized = image::imageops::resize(
-            &image_rgb,
-            416,
-            416,
-            ::image::imageops::FilterType::Nearest,
-        );
+        let resized =
+            image::imageops::resize(&image_rgb, 416, 416, ::image::imageops::FilterType::Nearest);
         let tensor: Tensor =
             tract_ndarray::Array4::from_shape_fn((1, 3, SIZE, SIZE), |(_, c, y, x)| {
                 resized[(x as _, y as _)][c] as f32

@@ -2,7 +2,9 @@ use cam_pos_system::coords::Coords;
 use cam_pos_system::frame::Frame;
 use cam_pos_system::stream::MJpeg;
 use cam_pos_system::tracker::Tracker;
-use image::{DynamicImage, ImageBuffer, Rgb};
+use cam_pos_system::yolo::Yolo;
+use image::{DynamicImage, GenericImageView, ImageBuffer, Rgb, Rgba};
+use imageproc::drawing::{draw_hollow_rect_mut, draw_text_mut};
 use nalgebra::Point2;
 use nokhwa::ThreadedCamera;
 use rocket::fs::FileServer;
@@ -11,6 +13,7 @@ use rocket::response::stream::ByteStream;
 use rocket::serde::json::Json;
 use rocket::State;
 use rocket::{get, options, post, routes};
+use rusttype::{Font, Scale};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -65,14 +68,58 @@ fn tracked_stream(
     frame: &'_ State<Arc<Mutex<Frame>>>,
 ) -> (Status, (ContentType, ByteStream<MJpeg>)) {
     let frame_mutex: Arc<Mutex<Frame>> = { frame.inner().clone() };
-    drop(frame);
     (
         Status::Ok,
         (
             ContentType::new("multipart", "x-mixed-replace").with_params([("boundary", "frame")]),
-            ByteStream(MJpeg::new(frame_mutex.clone())),
+            ByteStream(MJpeg::new(frame_mutex)),
         ),
     )
+}
+
+#[get("/yolo")]
+fn yolo(
+    frame: &'_ State<Arc<Mutex<Frame>>>,
+    yolo: &'_ State<Arc<Mutex<Yolo>>>,
+) -> (Status, (ContentType, Vec<u8>)) {
+    let frame = {
+        let base_img: DynamicImage = {
+            let img = frame.lock().unwrap();
+            DynamicImage::ImageRgb8(img.raw.clone())
+        };
+        let (width, height) = (base_img.width(), base_img.height());
+        let detections = {
+            let yolo = yolo.lock().unwrap();
+            yolo.detect_objects(&Box::new(base_img.clone()))
+        };
+        let mut img_copy = base_img.to_rgba8();
+        let color = Rgba([125u8, 255u8, 0u8, 0u8]);
+        for detection in detections.unwrap() {
+            let r = Yolo::scale(width, height, &detection.bbox);
+            draw_hollow_rect_mut(&mut img_copy, r, color);
+            let font_data = include_bytes!("../res/Arial.ttf");
+            let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
+
+            const FONT_SCALE: f32 = 10.0;
+            let label = Yolo::classes()[detection.class].to_string();
+
+            draw_text_mut(
+                &mut img_copy,
+                Rgba([125u8, 255u8, 0u8, 0u8]),
+                r.left() as u32,
+                r.top() as u32,
+                Scale::uniform(FONT_SCALE),
+                &font,
+                &format!("#{}", label),
+            );
+        }
+        let mut buf = vec![];
+        DynamicImage::ImageRgba8(img_copy)
+            .write_to(&mut buf, image::ImageOutputFormat::Jpeg(70))
+            .unwrap();
+        buf
+    };
+    (Status::Ok, (ContentType::JPEG, frame))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -103,7 +150,7 @@ fn get_coords(
         let world_point = Point2::new(world_x, world_y);
         let model_point = coords.to_model(&world_point);
         object_coords.push(ObjectCoords {
-            id: obj_id.clone(),
+            id: *obj_id,
             world_x,
             world_y,
             model_x: model_point.x,
@@ -148,7 +195,7 @@ fn options_update_position() {}
 
 async fn fetch_frame(frame: Arc<Mutex<Frame>>, webcam: Arc<Mutex<ThreadedCamera>>) {
     loop {
-        let _ = {
+        {
             let image = webcam.lock().unwrap().last_frame();
             let mut frame = frame.lock().unwrap();
             let mut f = Frame::new(image);
@@ -161,7 +208,7 @@ async fn fetch_frame(frame: Arc<Mutex<Frame>>, webcam: Arc<Mutex<ThreadedCamera>
 
 async fn run_tracker(tracker: Arc<Mutex<Tracker>>, frame: Arc<Mutex<Frame>>) {
     loop {
-        let _ = {
+        {
             let mut frame = frame.lock().unwrap();
             let mut tracker = tracker.lock().unwrap();
             let tracked = tracker.next(&frame.luma);
@@ -178,7 +225,7 @@ async fn main() {
     let mut webcam = ThreadedCamera::new(0, None).unwrap();
     webcam.open_stream(callback).unwrap();
 
-    let _ = {
+    {
         let image = webcam.poll_frame().unwrap();
         let mut frame = frame.lock().unwrap();
         *frame = Frame::new(image);
@@ -204,6 +251,8 @@ async fn main() {
         Point2::new(0.0, h),
     )));
 
+    let yolo = Arc::new(Mutex::new(Yolo::default()));
+
     let launcher = rocket::build()
         .mount("/", FileServer::from("static"))
         .mount(
@@ -211,6 +260,7 @@ async fn main() {
             routes![
                 frame,
                 luma,
+                yolo,
                 tracked,
                 tracked_stream,
                 get_coords,
@@ -221,7 +271,8 @@ async fn main() {
         .manage(webcam)
         .manage(frame)
         .manage(tracker)
-        .manage(coords);
+        .manage(coords)
+        .manage(yolo);
     let _server = launcher.launch().await.unwrap();
     fetch_frame_thread.abort();
     tracker_thread.abort();
