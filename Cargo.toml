@@ -25,10 +25,13 @@ image = { version = "0.23.1", default-features = false, features = [
     "png",
     "jpeg",
 ] }
-imageproc = "0.22.0"
+imageproc = { version = "0.22.0", default-features = false }
 mosse = { git = "https://github.com/chriamue/mosse-tracker", branch = "dev" }
 nalgebra = "0.31.0"
-nokhwa = { version = "0.9.4", features = ["input-v4l", "output-threaded"], optional = true }
+nokhwa = { version = "0.9.4", features = [
+    "input-v4l",
+    "output-threaded",
+], optional = true }
 num = "0.4.0"
 rocket = { version = "0.5.0-rc.2", features = ["json"], optional = true }
 rusttype = "0.9.2"
@@ -40,6 +43,15 @@ tract-onnx = { version = "=0.17.0" }
 ndarray = { version = "0.15.3" }
 
 [target.wasm32-unknown-unknown.dependencies]
-nokhwa = { version = "0.9.4", default-features = false, features = ["input-jscam"] }
+nokhwa = { version = "0.9.4", default-features = false, features = [
+    "input-jscam",
+] }
 console_error_panic_hook = "0.1"
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+wasm-bindgen-rayon = "1.0"
+
+[profile.release]
+opt-level = "s"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = true
