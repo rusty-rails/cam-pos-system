@@ -1,0 +1,21 @@
+{
+  "name": "cam-pos-system",
+  "collaborators": [
+    "Christian <chriamue@gmail.com>"
+  ],
+  "description": "Capture birds in your garden, running on raspberry pi.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rusty-rails/cam-pos-system"
+  },
+  "files": [
+    "cam_pos_system_bg.wasm",
+    "cam_pos_system.js",
+    "cam_pos_system.d.ts"
+  ],
+  "module": "cam_pos_system.js",
+  "types": "cam_pos_system.d.ts",
+  "sideEffects": false
+}
