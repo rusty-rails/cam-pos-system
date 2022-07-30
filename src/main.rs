@@ -1,10 +1,10 @@
 use cam_pos_system::coords::Coords;
 use cam_pos_system::frame::Frame;
+use cam_pos_system::object_detection;
 use cam_pos_system::stream::MJpeg;
 use cam_pos_system::tracker::Tracker;
 use cam_pos_system::yolo::Yolo;
-use image::{DynamicImage, GenericImageView, ImageBuffer, Rgb, Rgba};
-use imageproc::drawing::{draw_hollow_rect_mut, draw_text_mut};
+use image::{DynamicImage, ImageBuffer, Rgb};
 use nalgebra::Point2;
 use nokhwa::ThreadedCamera;
 use rocket::fs::FileServer;
@@ -13,7 +13,6 @@ use rocket::response::stream::ByteStream;
 use rocket::serde::json::Json;
 use rocket::State;
 use rocket::{get, options, post, routes};
-use rusttype::{Font, Scale};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -87,34 +86,12 @@ fn yolo(
             let img = frame.lock().unwrap();
             DynamicImage::ImageRgb8(img.raw.clone())
         };
-        let (width, height) = (base_img.width(), base_img.height());
-        let detections = {
+        let image = {
             let yolo = yolo.lock().unwrap();
-            yolo.detect_objects(&Box::new(base_img.clone()))
+            yolo.run(&base_img)
         };
-        let mut img_copy = base_img.to_rgba8();
-        let color = Rgba([125u8, 255u8, 0u8, 0u8]);
-        for detection in detections.unwrap() {
-            let r = Yolo::scale(width, height, &detection.bbox);
-            draw_hollow_rect_mut(&mut img_copy, r, color);
-            let font_data = include_bytes!("../res/Arial.ttf");
-            let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
-
-            const FONT_SCALE: f32 = 10.0;
-            let label = Yolo::classes()[detection.class].to_string();
-
-            draw_text_mut(
-                &mut img_copy,
-                Rgba([125u8, 255u8, 0u8, 0u8]),
-                r.left() as u32,
-                r.top() as u32,
-                Scale::uniform(FONT_SCALE),
-                &font,
-                &format!("#{}", label),
-            );
-        }
         let mut buf = vec![];
-        DynamicImage::ImageRgba8(img_copy)
+        image
             .write_to(&mut buf, image::ImageOutputFormat::Jpeg(70))
             .unwrap();
         buf
@@ -239,7 +216,16 @@ async fn main() {
         let frame = frame.lock().unwrap();
         (frame.raw.width(), frame.raw.height())
     };
-    let tracker = Arc::new(Mutex::new(Tracker::new(width, height)));
+    let mut tracker = Tracker::new(width, height);
+    let loco_detector = object_detection::ObjectDetection::new("loco5".to_string());
+    {
+        let frame = frame.lock().unwrap();
+        let prediction = loco_detector.predict(&frame.luma);
+        tracker
+            .tracker
+            .add_target(5, prediction.location, &frame.luma);
+    };
+    let tracker = Arc::new(Mutex::new(tracker));
 
     let tracker_thread = tokio::spawn(run_tracker(tracker.clone(), frame.clone()));
 

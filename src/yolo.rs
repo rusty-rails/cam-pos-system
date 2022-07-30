@@ -1,11 +1,12 @@
-use image::DynamicImage;
+use crate::bbox::BBox;
+use crate::detection::{nms_sort, Detection};
+use image::{DynamicImage, GenericImageView, Rgba};
+use imageproc::drawing::{draw_hollow_rect_mut, draw_text_mut};
 use imageproc::rect::Rect;
+use rusttype::{Font, Scale};
 use std::io::Cursor;
 use tract_ndarray::Axis;
 use tract_onnx::prelude::*;
-
-use crate::bbox::BBox;
-use crate::detection::{nms_sort, Detection};
 
 fn sigmoid(a: &f32) -> f32 {
     1.0 / (1.0 + (-a).exp())
@@ -122,6 +123,33 @@ impl Yolo {
         }
         let detections = nms_sort(detections);
         Ok(detections)
+    }
+
+    pub fn run(&self, image: &DynamicImage) -> DynamicImage {
+        let (width, height) = (image.width(), image.height());
+        let detections = self.detect_objects(&Box::new(image.clone()));
+        let mut img_copy = image.to_rgba8();
+        let color = Rgba([125u8, 255u8, 0u8, 0u8]);
+        for detection in detections.unwrap() {
+            let r = Yolo::scale(width, height, &detection.bbox);
+            draw_hollow_rect_mut(&mut img_copy, r, color);
+            let font_data = include_bytes!("../res/Arial.ttf");
+            let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
+
+            const FONT_SCALE: f32 = 10.0;
+            let label = Yolo::classes()[detection.class].to_string();
+
+            draw_text_mut(
+                &mut img_copy,
+                Rgba([125u8, 255u8, 0u8, 0u8]),
+                r.left() as u32,
+                r.top() as u32,
+                Scale::uniform(FONT_SCALE),
+                &font,
+                &format!("#{}", label),
+            );
+        }
+        DynamicImage::ImageRgba8(img_copy)
     }
 }
 
