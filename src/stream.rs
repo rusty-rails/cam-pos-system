@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::task::Context;
 use std::task::Poll;
 use std::thread;
-use tokio::time;
+use std::time;
 
 const FRAME_MILLIS: u32 = 1000 / 2;
 
