@@ -217,13 +217,37 @@ async fn main() {
         (frame.raw.width(), frame.raw.height())
     };
     let mut tracker = Tracker::new(width, height);
-    let loco_detector = object_detection::ObjectDetection::new("loco5".to_string());
+    let loco_detector = object_detection::ObjectDetection::new("res/loco5".to_string());
     {
         let frame = frame.lock().unwrap();
         let prediction = loco_detector.predict(&frame.luma);
         tracker
             .tracker
             .add_target(5, prediction.location, &frame.luma);
+    };
+    let marker1_detector = object_detection::ObjectDetection::new("res/marker1".to_string());
+    {
+        let frame = frame.lock().unwrap();
+        let prediction = marker1_detector.predict(&frame.luma);
+        tracker
+            .tracker
+            .add_target(1, prediction.location, &frame.luma);
+    };
+    let marker2_detector = object_detection::ObjectDetection::new("res/marker2".to_string());
+    {
+        let frame = frame.lock().unwrap();
+        let prediction = marker2_detector.predict(&frame.luma);
+        tracker
+            .tracker
+            .add_target(2, prediction.location, &frame.luma);
+    };
+    let marker3_detector = object_detection::ObjectDetection::new("res/marker3".to_string());
+    {
+        let frame = frame.lock().unwrap();
+        let prediction = marker3_detector.predict(&frame.luma);
+        tracker
+            .tracker
+            .add_target(3, prediction.location, &frame.luma);
     };
     let tracker = Arc::new(Mutex::new(tracker));
 
