@@ -40,7 +40,6 @@ impl Tracker {
 
     pub fn next(&mut self, image: &ImageBuffer<Luma<u8>, Vec<u8>>) -> DynamicImage {
         let predictions = self.tracker.track(&image);
-
         let mut img_copy = DynamicImage::ImageLuma8(image.clone()).to_rgba8();
         for (obj_id, pred) in predictions.iter() {
             let mut color = Rgba([125u8, 255u8, 0u8, 0u8]);

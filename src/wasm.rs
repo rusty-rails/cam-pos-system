@@ -1,16 +1,5 @@
 use crate::tracker::Tracker;
 use wasm_bindgen::prelude::*;
-pub use wasm_bindgen_rayon::init_thread_pool;
-
-#[wasm_bindgen]
-extern "C" {
-    pub fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet(name: &str) {
-    alert(&format!("Hello, {}!", name));
-}
 
 #[wasm_bindgen]
 pub struct TrackerJS {
@@ -30,8 +19,8 @@ impl TrackerJS {
 
     #[wasm_bindgen]
     pub fn set_target(&mut self, x: u32, y: u32, img_data: &[u8]) {
-        let img = image::load_from_memory(img_data).unwrap();
-        self.tracker.tracker.add_target(0, (x, y), &img.to_luma8());
+        let img = image::load_from_memory_with_format(img_data, image::ImageFormat::Png).unwrap();
+        self.tracker.tracker.add_target(1, (x, y), &img.to_luma8());
     }
 
     #[wasm_bindgen]
