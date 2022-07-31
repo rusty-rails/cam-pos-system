@@ -50,6 +50,7 @@ fn get_permutation(size: usize) -> Vec<usize> {
 
 pub trait Trainable {
     fn train(&mut self, dataset: &DataSet, epochs: usize);
+    fn evaluate(&self, dataset: &DataSet);
 }
 
 impl Trainable for Model<'_> {
@@ -96,6 +97,27 @@ impl Trainable for Model<'_> {
             });
         }
     }
+
+    fn evaluate(&self, dataset: &DataSet) {
+        let ((_x_train, _y_train), (x_test, y_test)) = dataset.get();
+        self.env.run(|ctx| {
+            let logits = compute_logits(ctx, false);
+            let predictions = T::argmax(logits, -1, true);
+            let accuracy = T::reduce_mean(
+                &T::equal(predictions, ctx.placeholder("y", &[-1, 1])),
+                &[0, 1],
+                false,
+            );
+            println!(
+                "test accuracy: {:?}",
+                ctx.evaluator()
+                    .push(accuracy)
+                    .feed("x", x_test.view())
+                    .feed("y", y_test.view())
+                    .run()
+            );
+        })
+    }
 }
 
 
@@ -110,6 +132,17 @@ mod tests {
         assert_eq!(dataset.samples(), 8);
         let mut model = Model::new();
         model.train(&dataset, 10);
+
+    }
+
+    #[test]
+    fn test_evaluate() {
+        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        dataset.load();
+        assert_eq!(dataset.samples(), 8);
+        let mut model = Model::new();
+        model.train(&dataset, 100);
+        model.evaluate(&dataset);
 
     }
 
