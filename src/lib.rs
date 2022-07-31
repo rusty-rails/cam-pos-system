@@ -4,9 +4,10 @@ pub mod detection;
 pub mod frame;
 pub mod object_detection;
 pub mod object_finder;
+#[cfg(feature = "server")]
+pub mod ssd;
 pub mod stream;
 pub mod tracker;
-pub mod yolo;
 
 #[cfg(target_arch = "wasm32")]
 pub mod wasm;

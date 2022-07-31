@@ -13,9 +13,10 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["server"]
-server = ["tokio", "rocket", "nokhwa"]
+server = ["tokio", "rocket", "nokhwa", "autograd"]
 
 [dependencies]
+autograd = { version = "2.0.0-rc3", optional = true }
 bardecoder = "0.3.0"
 float-ord = "0.3.2"
 format-bytes = "0.1"
@@ -51,6 +52,7 @@ nokhwa = { version = "0.9.4", default-features = false, features = [
 ] }
 console_error_panic_hook = "0.1"
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+getrandom = { version = "0.2.7", features = ["js"] }
 
 [profile.release]
 opt-level = "s"

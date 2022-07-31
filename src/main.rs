@@ -1,9 +1,9 @@
 use cam_pos_system::coords::Coords;
 use cam_pos_system::frame::Frame;
 use cam_pos_system::object_detection;
+use cam_pos_system::ssd::yolo::Yolo;
 use cam_pos_system::stream::MJpeg;
 use cam_pos_system::tracker::Tracker;
-use cam_pos_system::yolo::Yolo;
 use image::{DynamicImage, ImageBuffer, Rgb};
 use nalgebra::Point2;
 use nokhwa::ThreadedCamera;

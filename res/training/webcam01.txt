@@ -1,0 +1,4 @@
+marker1 600 100
+marker2 100 50
+marker3 20 350
+loco5 300 400

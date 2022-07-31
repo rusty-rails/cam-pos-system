@@ -27,7 +27,7 @@ pub struct Yolo {
 
 impl Yolo {
     pub fn model() -> ModelType {
-        let data = include_bytes!("../res/tinyyolov2-7.onnx");
+        let data = include_bytes!("../../res/tinyyolov2-7.onnx");
         let mut cursor = Cursor::new(data);
         let model = tract_onnx::onnx()
             .model_for_read(&mut cursor)
@@ -45,7 +45,7 @@ impl Yolo {
     }
 
     pub fn classes() -> Vec<String> {
-        let collect = include_str!("../res/voc.names")
+        let collect = include_str!("../../res/voc.names")
             .to_string()
             .lines()
             .map(|s| s.to_string())
@@ -133,7 +133,7 @@ impl Yolo {
         for detection in detections.unwrap() {
             let r = Yolo::scale(width, height, &detection.bbox);
             draw_hollow_rect_mut(&mut img_copy, r, color);
-            let font_data = include_bytes!("../res/Arial.ttf");
+            let font_data = include_bytes!("../../res/Arial.ttf");
             let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
 
             const FONT_SCALE: f32 = 10.0;
