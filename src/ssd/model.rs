@@ -1,10 +1,8 @@
 // source: https://github.com/raskr/rust-autograd/blob/master/examples/cnn_mnist.rs
-use autograd as ag;
-use ndarray;
-
 use ag::ndarray_ext as array;
 use ag::optimizers;
 use ag::prelude::*;
+use autograd as ag;
 
 pub struct Model<'a> {
     pub env: ag::VariableEnvironment<'a, f32>,

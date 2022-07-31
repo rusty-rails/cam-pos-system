@@ -2,12 +2,12 @@ use super::model::Model;
 use ag::optimizers;
 use ag::prelude::*;
 use ag::tensor_ops as T;
-use ag::{ndarray_ext as array, Context};
+use ag::{ndarray::s, Context};
 use autograd as ag;
 use autograd::rand::prelude::SliceRandom;
-use ndarray;
-use ndarray::s;
 use std::time::Instant;
+
+use super::dataset::DataSet;
 
 macro_rules! timeit {
     ($x:expr) => {{
@@ -49,12 +49,16 @@ fn get_permutation(size: usize) -> Vec<usize> {
 }
 
 pub trait Trainable {
-    fn train(&mut self, epochs: usize);
+    fn train(&mut self, dataset: &DataSet, epochs: usize);
 }
 
 impl Trainable for Model<'_> {
-    fn train(&mut self, epochs: usize) {
-        /*
+    fn train(&mut self, dataset: &DataSet, epochs: usize) {
+        let ((x_train, y_train), (_x_test, _y_test)) = dataset.get();
+        let batch_size = 128isize;
+        let num_train_samples = x_train.shape()[0];
+        let num_batches = num_train_samples / batch_size as usize;
+
         for epoch in 0..epochs {
             let mut loss_sum = 0f32;
             timeit!({
@@ -91,6 +95,5 @@ impl Trainable for Model<'_> {
                 );
             });
         }
-        */
     }
 }
