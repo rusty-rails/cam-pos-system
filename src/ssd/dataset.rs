@@ -95,6 +95,11 @@ impl DataSet {
         props
     }
 
+    pub fn label_id(label: &str, labels: &Vec<String>) -> Vec<f32> {
+        let idx = labels.into_iter().position(|x| x == label).unwrap();
+        vec![idx as f32]
+    }
+
     pub fn get(&self) -> ((NdArray, NdArray), (NdArray, NdArray)) {
         let (train_x, num_image_train): (Vec<f32>, usize) = (
             self.data
@@ -106,7 +111,7 @@ impl DataSet {
         let (train_y, num_label_train): (Vec<f32>, usize) = (
             self.data
                 .iter()
-                .flat_map(|(label, _)| Self::label_props(label, &self.names))
+                .flat_map(|(label, _)| Self::label_id(label, &self.names))
                 .collect(),
             self.data.len(),
         );
@@ -120,7 +125,7 @@ impl DataSet {
         let (test_y, num_label_test): (Vec<f32>, usize) = (
             self.data
                 .iter()
-                .flat_map(|(label, _)| Self::label_props(label, &self.names))
+                .flat_map(|(label, _)| Self::label_id(label, &self.names))
                 .collect(),
             self.data.len(),
         );
