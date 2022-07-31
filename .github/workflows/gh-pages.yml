@@ -13,6 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
+      - name: install rust-src
+        run: rustup component add rust-src --toolchain nightly-2022-04-07-x86_64-unknown-linux-gnu
       - uses: jetli/wasm-pack-action@v0.3.0
         with:
           version: "latest"
