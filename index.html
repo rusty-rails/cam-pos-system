@@ -3,16 +3,101 @@
 
 <head>
     <meta charset="utf-8">
-    <title>hello-wasm example</title>
+    <title>Webcam Tracking</title>
+    <style>
+        #container {
+            margin: 0px auto;
+            width: 500px;
+            height: 375px;
+            border: 10px #333 solid;
+        }
+
+        #videoElement {
+            visibility: hidden;
+            width: 1px;
+            height: 1px;
+            background-color: #666;
+        }
+
+        #canvas {
+            width: 500px;
+            height: 375px;
+            background-color: #666;
+        }
+    </style>
 </head>
 
 <body>
+
+    <video autoplay="true" id="videoElement"></video>
+    <div id="container">
+        <canvas id="canvas">
+        </canvas>
+
+        <img id="img" />
+    </div>
     <script type="module">
-        import init, { greet } from "./pkg/cam_pos_system.js";
+        var video = document.querySelector("#videoElement");
+        var canvas = document.getElementById('canvas');
+        canvas.onclick = updatePosition;
+        var img = document.getElementById('img');
+        var tracker;
+
+        import init, { initThreadPool, TrackerJS } from "./pkg/cam_pos_system.js";
         init()
-            .then(() => {
-                greet("WebAssembly")
+            .then(async () => {
+                try {
+                    await initThreadPool(navigator.hardwareConcurrency);
+                } catch (e) {
+                    console.error(e);
+                }
+                if (navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ audio: false, video: true })
+                        .then(function (stream) {
+                            video.srcObject = stream;
+                            tracker = new TrackerJS(video.videoWidth, video.videoHeight);
+                        })
+                        .catch(function (error) {
+                            console.error("Something went wrong!", error);
+                        });
+                }
             });
+
+        setInterval(async function () {
+            const context = canvas.getContext('2d');
+            var width = video.videoWidth;
+            var height = video.videoHeight;
+            if (width && height) {
+                canvas.width = width;
+                canvas.height = height;
+                var c = document.createElement('canvas');
+                c.width = width;
+                c.height = height;
+                var ctx = c.getContext('2d');
+                ctx.drawImage(video, 0, 0, width, height);
+                context.drawImage(video, 0, 0, width, height);
+
+                const base64 = c.toDataURL('image/png');
+                const blob = await (await fetch(base64)).blob();
+                let frame = new Uint8Array(await blob.arrayBuffer());
+                var tracked_frame = tracker.next(frame);
+
+                var tracked_blob = new Blob([tracked_frame], { 'type': 'image/png' });
+                var url = URL.createObjectURL(tracked_blob);
+                img.src = url;
+            } else {
+            }
+        }, 1000);
+
+        async function updatePosition(event) {
+            let x = event.offsetX;
+            let y = event.offsetY;
+            const context = canvas.getContext('2d');
+            const base64 = canvas.toDataURL('image/png');
+            const blob = await (await fetch(base64)).blob();
+            let frame = new Uint8Array(await blob.arrayBuffer());
+            tracker.set_target(x, y, frame);
+        }
     </script>
 </body>
 
