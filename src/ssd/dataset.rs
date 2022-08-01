@@ -1,7 +1,7 @@
 use ag::ndarray;
 use autograd as ag;
 use image::{open, GrayImage};
-use mosse::utils::{preprocess, window_crop};
+use mosse::utils::{preprocess, rotated_frames, scaled_frames, window_crop};
 use std::fs::read_dir;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -32,9 +32,9 @@ impl DataSet {
             .collect()
     }
 
-    pub fn load(&mut self) {
+    pub fn load(&mut self, augment: bool) {
         let pathes = Self::list_pathes(&self.path);
-        let annotations = Self::load_annotations(pathes);
+        let annotations = Self::load_annotations(pathes, augment);
         self.data = annotations;
     }
 
@@ -63,7 +63,10 @@ impl DataSet {
         (label, window)
     }
 
-    pub fn load_annotations(pathes: Vec<(String, String)>) -> Vec<(String, GrayImage)> {
+    pub fn load_annotations(
+        pathes: Vec<(String, String)>,
+        augment: bool,
+    ) -> Vec<(String, GrayImage)> {
         let mut annotations = Vec::new();
         for path in pathes {
             let file = File::open(path.0).unwrap();
@@ -74,12 +77,28 @@ impl DataSet {
                         let label = l.next().unwrap();
                         let x: u32 = l.next().unwrap().parse().unwrap();
                         let y: u32 = l.next().unwrap().parse().unwrap();
-                        annotations.push(Self::load_annotation(
-                            path.1.clone(),
-                            label.to_string(),
-                            x,
-                            y,
-                        ))
+                        match augment {
+                            true => {
+                                let annotation =
+                                    Self::load_annotation(path.1.clone(), label.to_string(), x, y);
+                                let frame = annotation.1.clone();
+                                let frames = std::iter::once(&frame)
+                                    .cloned()
+                                    .chain(rotated_frames(&frame))
+                                    .chain(scaled_frames(&frame));
+                                let augmented_annotations =
+                                    frames.map(|f| (annotation.0.clone(), f));
+                                annotations.extend(augmented_annotations);
+                            }
+                            false => {
+                                annotations.push(Self::load_annotation(
+                                    path.1.clone(),
+                                    label.to_string(),
+                                    x,
+                                    y,
+                                ));
+                            }
+                        };
                     }
                     _ => (),
                 }
@@ -161,14 +180,14 @@ mod tests {
             "res/training/webcam01.txt".to_string(),
             "res/training/webcam01.jpg".to_string(),
         )];
-        let annotations = DataSet::load_annotations(pathes);
+        let annotations = DataSet::load_annotations(pathes, false);
         assert_eq!(annotations.len(), 4);
     }
 
     #[test]
     fn test_dataset() {
         let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
-        dataset.load();
+        dataset.load(false);
         assert_eq!(dataset.samples(), 8);
     }
 
@@ -187,5 +206,12 @@ mod tests {
         assert_eq!(props.len(), 10);
         assert_eq!(props[5], 1.0);
         assert_eq!(props[0], 0.0);
+    }
+
+    #[test]
+    fn test_load_augmented() {
+        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        dataset.load(true);
+        assert_eq!(dataset.samples(), 168);
     }
 }

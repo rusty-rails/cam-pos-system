@@ -56,7 +56,7 @@ pub trait Trainable {
 impl Trainable for Model<'_> {
     fn train(&mut self, dataset: &DataSet, epochs: usize) {
         let ((x_train, y_train), (_x_test, _y_test)) = dataset.get();
-        let batch_size = 4isize;
+        let batch_size = 16isize;
         let num_train_samples = x_train.shape()[0];
         let num_batches = num_train_samples / batch_size as usize;
 
@@ -120,7 +120,6 @@ impl Trainable for Model<'_> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -128,22 +127,19 @@ mod tests {
     #[test]
     fn test_training() {
         let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
-        dataset.load();
+        dataset.load(false);
         assert_eq!(dataset.samples(), 8);
         let mut model = Model::new();
         model.train(&dataset, 10);
-
     }
 
     #[test]
     fn test_evaluate() {
         let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
-        dataset.load();
-        assert_eq!(dataset.samples(), 8);
+        dataset.load(true);
+        assert_eq!(dataset.samples(), 168);
         let mut model = Model::new();
         model.train(&dataset, 100);
         model.evaluate(&dataset);
-
     }
-
 }
