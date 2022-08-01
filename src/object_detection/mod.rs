@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn object_detection() {
-        let detector = ObjectDetection::new("loco5/".to_string());
+        let detector = ObjectDetection::new("res/loco5/".to_string());
 
         let webcam1 = open("res/webcam01.jpg").unwrap().to_luma8();
         let webcam6 = open("res/webcam05.jpg").unwrap().to_luma8();

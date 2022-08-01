@@ -40,6 +40,7 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
 
+    #[ignore]
     #[test]
     fn default() {
         use image::open;

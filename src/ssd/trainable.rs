@@ -32,7 +32,7 @@ fn conv_pool<'g>(x: Tensor<'g>, w: Tensor<'g>, b: Tensor<'g>, train: bool) -> Te
     T::dropout(y3, 0.25, train)
 }
 
-fn compute_logits<'g>(c: &'g Context<f32>, train: bool) -> Tensor<'g> {
+pub fn compute_logits<'g>(c: &'g Context<f32>, train: bool) -> Tensor<'g> {
     let x = c.placeholder("x", &[-1, 28 * 28]);
     let x = x.reshape(&[-1, 1, 28, 28]); // 2D -> 4D
     let z1 = conv_pool(x, c.variable("w1"), c.variable("b1"), train); // map to 32 channel
