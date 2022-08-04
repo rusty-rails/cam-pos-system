@@ -34,6 +34,7 @@ nokhwa = { version = "0.9.4", features = [
     "output-threaded",
 ], optional = true }
 num = "0.4.0"
+rand = "0.8.5"
 rayon = { version = "1.5.3", optional = true }
 rocket = { version = "0.5.0-rc.2", features = ["json"], optional = true }
 rusttype = "0.9.2"

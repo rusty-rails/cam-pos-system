@@ -1,17 +1,18 @@
+use super::NdArray;
 use ag::ndarray;
 use autograd as ag;
 use image::{open, GrayImage};
 use mosse::utils::{preprocess, rotated_frames, scaled_frames, window_crop};
+use rand::prelude::ThreadRng;
+use rand::Rng;
 use std::fs::read_dir;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::vec;
 
-pub type NdArray = ndarray::Array<f32, ndarray::IxDyn>;
-
 pub struct DataSet {
     path: String,
-    data: Vec<(String, GrayImage)>,
+    pub data: Vec<(String, GrayImage)>,
     names: Vec<String>,
 }
 
@@ -105,6 +106,35 @@ impl DataSet {
             }
         }
         annotations
+    }
+
+    pub fn generate_random_annotations_from_image(
+        image: &GrayImage,
+        label: String,
+        count: usize,
+    ) -> Vec<(String, GrayImage)> {
+        let mut annotations = Vec::new();
+        let mut rng: ThreadRng = rand::thread_rng();
+
+        for _ in 0..count {
+            let x = rng.gen_range(0..=image.width());
+            let y = rng.gen_range(0..=image.height());
+            annotations.push((label.to_string(), window_crop(&image, 28, 28, (x, y))));
+        }
+        annotations
+    }
+
+    pub fn generate_random_annotations(&mut self, count_each: usize) {
+        let pathes = Self::list_pathes(&self.path);
+        for (_, image_path) in pathes {
+            let img = open(image_path).unwrap().to_luma8();
+            self.data
+                .extend(Self::generate_random_annotations_from_image(
+                    &img,
+                    "none".to_string(),
+                    count_each,
+                ));
+        }
     }
 
     pub fn label_props(label: &str, labels: &Vec<String>) -> Vec<f32> {
@@ -213,5 +243,20 @@ mod tests {
         let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
         dataset.load(true);
         assert_eq!(dataset.samples(), 168);
+    }
+
+    #[test]
+    fn test_generate_random_annotations() {
+        let image = GrayImage::new(32, 32);
+        let annotations =
+            DataSet::generate_random_annotations_from_image(&image, "none".to_string(), 5);
+        assert_eq!(annotations.len(), 5);
+        assert_eq!(annotations.last().unwrap().0, "none");
+
+        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        dataset.load(true);
+        assert_eq!(dataset.samples(), 168);
+        dataset.generate_random_annotations(1);
+        assert_eq!(dataset.samples(), 170);
     }
 }
