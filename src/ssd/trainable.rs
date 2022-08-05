@@ -38,8 +38,8 @@ pub fn compute_logits<'g>(
     input_height: isize,
     train: bool,
 ) -> Tensor<'g> {
-    let x = c.placeholder("x", &[-1, input_width * input_height]);
-    let x = x.reshape(&[-1, 1, input_width, input_height]); // 2D -> 4D
+    let x = c.placeholder("x", &[-1, input_width * input_height * 3]);
+    let x = x.reshape(&[-1, 3, input_width, input_height]); // 2D -> 4D
     let z1 = conv_pool(x, c.variable("w1"), c.variable("b1"), train); // map to 32 channel
     let z2 = conv_pool(z1, c.variable("w2"), c.variable("b2"), train); // map to 64 channel
     let z3 = T::reshape(z2, &[-1, 64 * input_width / 4 * input_height / 4]); // flatten
@@ -61,7 +61,7 @@ pub trait Trainable {
 impl Trainable for Model<'_> {
     fn train(&mut self, dataset: &DataSet, epochs: usize) {
         let ((x_train, y_train), (_x_test, _y_test)) = dataset.get();
-        let batch_size = 32isize;
+        let batch_size = 64isize;
         let num_train_samples = x_train.shape()[0];
         let num_batches = num_train_samples / batch_size as usize;
 

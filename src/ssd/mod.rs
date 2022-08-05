@@ -32,7 +32,6 @@ pub fn window_crop(
         window_height,
     )
     .to_image();
-
     return window;
 }
 
@@ -79,10 +78,9 @@ pub fn scaled_frames(frame: &RgbImage) -> impl Iterator<Item = RgbImage> + '_ {
 }
 
 pub fn preprocess(image: &RgbImage) -> Vec<f32> {
-    let mut prepped: Vec<f32> = image
-        .pixels()
+    let mut prepped: Vec<f32> = image.clone().into_raw().into_iter()
         // convert the pixel to u8 and then to f32
-        .map(|p| p[0] as f32)
+        .map(|p| p as f32)
         // add 1, and take the natural logarithm
         .map(|p| (p + 1.0).ln())
         .collect();
@@ -110,6 +108,8 @@ pub fn preprocess(image: &RgbImage) -> Vec<f32> {
             position += 1;
         }
     }
+
+    assert_eq!(prepped.len() as u32, image.width() * image.height() *3);
 
     return prepped;
 }

@@ -25,7 +25,7 @@ impl Predictable for Model<'_> {
         );
         let as_arr = NdArray::from_shape_vec;
         let x = as_arr(
-            ndarray::IxDyn(&[num_image, self.input_width * self.input_height]),
+            ndarray::IxDyn(&[num_image, self.input_width * self.input_height * 3]),
             x,
         )
         .unwrap();
@@ -58,7 +58,7 @@ impl Predictable for Model<'_> {
         );
         let as_arr = NdArray::from_shape_vec;
         let x = as_arr(
-            ndarray::IxDyn(&[num_image, self.input_width * self.input_height]),
+            ndarray::IxDyn(&[num_image, self.input_width * self.input_height * 3]),
             x,
         )
         .unwrap();
@@ -81,8 +81,8 @@ impl Predictable for Model<'_> {
 
     fn predict_to_image(&mut self, image: RgbImage) -> DynamicImage {
         let window_size = self.input_width as u32;
-        let cols = image.width() / window_size;
-        let rows = image.height() / window_size;
+        let cols = 2 * (image.width() / window_size);
+        let rows = 2 * (image.height() / window_size);
         let predictions = self.predict_image(image.clone());
         let detections = detect_objects(cols, rows, predictions, window_size);
 
@@ -98,8 +98,8 @@ impl Predictable for Model<'_> {
             draw_hollow_rect_mut(
                 &mut img_copy,
                 Rect::at(
-                    (detection.bbox.x as u32).saturating_sub(window_size / 2) as i32,
-                    (detection.bbox.y as u32).saturating_sub(window_size / 2) as i32,
+                    (detection.bbox.x as u32) as i32,
+                    (detection.bbox.y as u32) as i32,
                 )
                 .of_size(window_size, window_size),
                 color,
@@ -113,8 +113,8 @@ impl Predictable for Model<'_> {
             draw_text_mut(
                 &mut img_copy,
                 Rgba([125u8, 255u8, 0u8, 0u8]),
-                detection.bbox.x as u32 - (window_size / 2),
-                detection.bbox.y as u32 - (window_size / 2),
+                detection.bbox.x as u32,
+                detection.bbox.y as u32,
                 Scale::uniform(FONT_SCALE),
                 &font,
                 &format!("{}", detection.class),
@@ -125,13 +125,13 @@ impl Predictable for Model<'_> {
 }
 
 pub fn windows(image: &RgbImage, window_size: u32) -> (u32, u32, Vec<SubImage<&RgbImage>>) {
-    let cols = image.width() / window_size;
-    let rows = image.height() / window_size;
+    let cols = 2 * (image.width() / window_size);
+    let rows = 2 * (image.height() / window_size);
     let mut subimages = Vec::new();
 
-    for y in 0..rows {
-        for x in 0..cols {
-            subimages.push(SubImage::new(image, x, y, window_size, window_size))
+    for y in 0..rows-1 {
+        for x in 0..cols-1 {
+            subimages.push(SubImage::new(image, x*(window_size/2), y*(window_size/2), window_size, window_size))
         }
     }
 
@@ -145,16 +145,16 @@ pub fn detect_objects(
     window_size: u32,
 ) -> Vec<Detection> {
     let mut detections: Vec<Detection> = Vec::new();
-    for y in 0..rows {
-        for x in 0..cols {
-            let i = (y * cols + x) as usize;
+    for y in 0..rows-1 {
+        for x in 0..cols-1 {
+            let i = (y * (cols-1) + x) as usize;
             let class = predictions[i] as usize;
             if class > 0 {
                 // add 0.1 to generate an overlap on contacting windows.
                 let size = 0.01 + window_size as f64;
                 let bbox = BBox {
-                    x: (x * window_size) as f64,
-                    y: (y * window_size) as f64,
+                    x: (x * (window_size / 2)) as f64,
+                    y: (y * (window_size / 2)) as f64,
                     w: size,
                     h: size,
                 };
@@ -221,9 +221,9 @@ mod tests {
         let window_size = 4;
         let (cols, rows, subimages) = windows(&image, window_size);
 
-        assert_eq!(cols, 2);
-        assert_eq!(rows, 2);
-        assert_eq!(subimages.len() as u32, cols * rows);
+        assert_eq!(cols, 4);
+        assert_eq!(rows, 4);
+        assert_eq!(subimages.len() as u32, (cols - 1) * (rows - 1));
     }
 
     #[test]
@@ -257,7 +257,7 @@ mod tests {
         let predictions = vec![0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0];
 
         let detections = detect_objects(cols, rows, predictions, window_size);
-        assert_eq!(detections.len(), 2);
+        assert_eq!(detections.len(), 1);
     }
 
     #[test]
@@ -274,7 +274,7 @@ mod tests {
             32,
         );
         dataset.load(true);
-        dataset.generate_random_annotations(10);
+        dataset.generate_random_annotations(25);
         println!(
             "{:?}",
             dataset
@@ -284,7 +284,7 @@ mod tests {
                 .collect::<Vec<String>>()
         );
         let mut model = Model::new(32, 32);
-        model.train(&dataset, 25);
+        model.train(&dataset, 125);
 
         model
             .predict_to_image(webcam1)

@@ -16,7 +16,7 @@ impl Model<'_> {
         let mut env = ag::VariableEnvironment::<f32>::new();
         let rng = ag::ndarray_ext::ArrayRng::<f32>::default();
         env.name("w1")
-            .set(rng.random_normal(&[32, 1, 3, 3], 0., 0.1));
+            .set(rng.random_normal(&[32, 3, 3, 3], 0., 0.1));
         env.name("w2")
             .set(rng.random_normal(&[64, 32, 3, 3], 0., 0.1));
         env.name("w3")

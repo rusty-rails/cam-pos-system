@@ -199,7 +199,7 @@ impl DataSet {
         let x_train = as_arr(
             ndarray::IxDyn(&[
                 num_image_train,
-                (self.window_size * self.window_size) as usize,
+                (self.window_size * self.window_size * 3) as usize,
             ]),
             train_x,
         )
@@ -208,7 +208,7 @@ impl DataSet {
         let x_test = as_arr(
             ndarray::IxDyn(&[
                 num_image_test,
-                (self.window_size * self.window_size) as usize,
+                (self.window_size * self.window_size * 3) as usize,
             ]),
             test_x,
         )
