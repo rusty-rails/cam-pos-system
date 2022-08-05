@@ -1,25 +1,24 @@
 use super::model::Model;
 use super::trainable::compute_logits;
-use super::NdArray;
+use super::{NdArray, preprocess};
 use crate::bbox::BBox;
 use crate::detection::{merge, nms_sort, Detection};
 use ag::ndarray;
 use ag::tensor_ops as T;
 use autograd as ag;
-use image::{DynamicImage, GrayImage, Rgba, SubImage};
+use image::{DynamicImage, Rgba, SubImage, RgbImage};
 use imageproc::drawing::{draw_cross_mut, draw_hollow_rect_mut, draw_text_mut};
 use imageproc::rect::Rect;
-use mosse::utils::preprocess;
 use rusttype::{Font, Scale};
 
 pub trait Predictable {
-    fn predict(&mut self, windows: Vec<GrayImage>) -> Vec<u32>;
-    fn predict_image(&mut self, windows: GrayImage) -> Vec<u32>;
-    fn predict_to_image(&mut self, image: GrayImage) -> DynamicImage;
+    fn predict(&mut self, windows: Vec<RgbImage>) -> Vec<u32>;
+    fn predict_image(&mut self, windows: RgbImage) -> Vec<u32>;
+    fn predict_to_image(&mut self, image: RgbImage) -> DynamicImage;
 }
 
 impl Predictable for Model<'_> {
-    fn predict(&mut self, windows: Vec<GrayImage>) -> Vec<u32> {
+    fn predict(&mut self, windows: Vec<RgbImage>) -> Vec<u32> {
         let (x, num_image): (Vec<f32>, usize) = (
             windows.iter().flat_map(|img| preprocess(&img)).collect(),
             windows.len(),
@@ -47,7 +46,7 @@ impl Predictable for Model<'_> {
         prediction.iter().map(|v| *v as u32).collect()
     }
 
-    fn predict_image(&mut self, image: GrayImage) -> Vec<u32> {
+    fn predict_image(&mut self, image: RgbImage) -> Vec<u32> {
         let (_cols, _rows, windows) = windows(&image, self.input_width as u32);
 
         let (x, num_image): (Vec<f32>, usize) = (
@@ -80,14 +79,14 @@ impl Predictable for Model<'_> {
         prediction.iter().map(|v| *v as u32).collect()
     }
 
-    fn predict_to_image(&mut self, image: GrayImage) -> DynamicImage {
+    fn predict_to_image(&mut self, image: RgbImage) -> DynamicImage {
         let window_size = self.input_width as u32;
         let cols = image.width() / window_size;
         let rows = image.height() / window_size;
         let predictions = self.predict_image(image.clone());
         let detections = detect_objects(cols, rows, predictions, window_size);
 
-        let mut img_copy = DynamicImage::ImageLuma8(image).to_rgba8();
+        let mut img_copy = DynamicImage::ImageRgb8(image).to_rgba8();
         for detection in detections.iter() {
             let color = Rgba([125u8, 255u8, 0u8, 0u8]);
             draw_cross_mut(
@@ -125,7 +124,7 @@ impl Predictable for Model<'_> {
     }
 }
 
-pub fn windows(image: &GrayImage, window_size: u32) -> (u32, u32, Vec<SubImage<&GrayImage>>) {
+pub fn windows(image: &RgbImage, window_size: u32) -> (u32, u32, Vec<SubImage<&RgbImage>>) {
     let cols = image.width() / window_size;
     let rows = image.height() / window_size;
     let mut subimages = Vec::new();
@@ -178,7 +177,7 @@ mod tests {
     use crate::ssd::dataset::DataSet;
     use crate::ssd::trainable::Trainable;
     use image::open;
-    use mosse::utils::window_crop;
+    use super::super::window_crop;
 
     #[test]
     fn test_training() {
@@ -197,7 +196,7 @@ mod tests {
     fn test_predict() {
 
         let window_size = 28;
-        let webcam1 = open("res/webcam01.jpg").unwrap().to_luma8();
+        let webcam1 = open("res/webcam01.jpg").unwrap().to_rgb8();
         let loco5 = window_crop(&webcam1, window_size, window_size, (280, 370));
         let marker1 = window_crop(&webcam1, window_size, window_size, (540, 90));
         let marker2 = window_crop(&webcam1, window_size, window_size, (100, 25));
@@ -218,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_windows_cols_and_rows() {
-        let image = GrayImage::new(10, 10);
+        let image = RgbImage::new(10, 10);
         let window_size = 4;
         let (cols, rows, subimages) = windows(&image, window_size);
 
@@ -229,7 +228,7 @@ mod tests {
 
     #[test]
     fn test_predict_image() {
-        let webcam1 = open("res/webcam01.jpg").unwrap().to_luma8();
+        let webcam1 = open("res/webcam01.jpg").unwrap().to_rgb8();
 
         let mut dataset = DataSet::new(
             "res/training/".to_string(),
@@ -264,7 +263,7 @@ mod tests {
     #[test]
     fn test_predict_to_image() {
         let window_size = 64;
-        let webcam1 = open("res/webcam01.jpg").unwrap().to_luma8();
+        let webcam1 = open("res/webcam01.jpg").unwrap().to_rgb8();
         let loco5 = window_crop(&webcam1, window_size, window_size, (280, 370));
         let marker1 = window_crop(&webcam1, window_size, window_size, (540, 90));
         let marker2 = window_crop(&webcam1, window_size, window_size, (100, 25));
@@ -272,7 +271,7 @@ mod tests {
         let mut dataset = DataSet::new(
             "res/training/".to_string(),
             "res/labels.txt".to_string(),
-            24,
+            32,
         );
         dataset.load(true);
         dataset.generate_random_annotations(10);
@@ -284,8 +283,8 @@ mod tests {
                 .map(|(l, _)| l.to_string())
                 .collect::<Vec<String>>()
         );
-        let mut model = Model::new(24, 24);
-        model.train(&dataset, 125);
+        let mut model = Model::new(32, 32);
+        model.train(&dataset, 25);
 
         model
             .predict_to_image(webcam1)

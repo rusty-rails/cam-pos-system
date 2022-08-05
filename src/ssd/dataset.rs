@@ -1,8 +1,8 @@
 use super::NdArray;
 use ag::ndarray;
 use autograd as ag;
-use image::{open, GrayImage};
-use mosse::utils::{preprocess, rotated_frames, scaled_frames, window_crop};
+use image::{open, RgbImage};
+use super::{window_crop, rotated_frames, scaled_frames, preprocess};
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::fs::read_dir;
@@ -12,7 +12,7 @@ use std::vec;
 
 pub struct DataSet {
     path: String,
-    pub data: Vec<(String, GrayImage)>,
+    pub data: Vec<(String, RgbImage)>,
     names: Vec<String>,
     window_size: u32,
 }
@@ -61,8 +61,8 @@ impl DataSet {
         x: u32,
         y: u32,
         window_size: u32,
-    ) -> (String, GrayImage) {
-        let img = open(image_path).unwrap().to_luma8();
+    ) -> (String, RgbImage) {
+        let img = open(image_path).unwrap().to_rgb8();
         let window = window_crop(&img, window_size, window_size, (x, y));
         (label, window)
     }
@@ -71,7 +71,7 @@ impl DataSet {
         pathes: Vec<(String, String)>,
         window_size: u32,
         augment: bool,
-    ) -> Vec<(String, GrayImage)> {
+    ) -> Vec<(String, RgbImage)> {
         let mut annotations = Vec::new();
         for path in pathes {
             let file = File::open(path.0).unwrap();
@@ -119,11 +119,11 @@ impl DataSet {
     }
 
     pub fn generate_random_annotations_from_image(
-        image: &GrayImage,
+        image: &RgbImage,
         label: String,
         count: usize,
         window_size: u32,
-    ) -> Vec<(String, GrayImage)> {
+    ) -> Vec<(String, RgbImage)> {
         let mut annotations = Vec::new();
         let mut rng: ThreadRng = rand::thread_rng();
 
@@ -141,7 +141,7 @@ impl DataSet {
     pub fn generate_random_annotations(&mut self, count_each: usize) {
         let pathes = Self::list_pathes(&self.path);
         for (_, image_path) in pathes {
-            let img = open(image_path).unwrap().to_luma8();
+            let img = open(image_path).unwrap().to_rgb8();
             self.data
                 .extend(Self::generate_random_annotations_from_image(
                     &img,
@@ -284,7 +284,7 @@ mod tests {
 
     #[test]
     fn test_generate_random_annotations() {
-        let image = GrayImage::new(32, 32);
+        let image = RgbImage::new(32, 32);
         let annotations =
             DataSet::generate_random_annotations_from_image(&image, "none".to_string(), 5, 28);
         assert_eq!(annotations.len(), 5);
