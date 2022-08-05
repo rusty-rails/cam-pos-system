@@ -14,14 +14,16 @@ pub struct DataSet {
     path: String,
     pub data: Vec<(String, GrayImage)>,
     names: Vec<String>,
+    window_size: u32,
 }
 
 impl DataSet {
-    pub fn new(path: String, label_names_path: String) -> DataSet {
+    pub fn new(path: String, label_names_path: String, window_size: u32) -> DataSet {
         DataSet {
             path,
             data: Vec::new(),
             names: Self::load_label_names(label_names_path),
+            window_size,
         }
     }
 
@@ -35,7 +37,7 @@ impl DataSet {
 
     pub fn load(&mut self, augment: bool) {
         let pathes = Self::list_pathes(&self.path);
-        let annotations = Self::load_annotations(pathes, augment);
+        let annotations = Self::load_annotations(pathes, self.window_size, augment);
         self.data = annotations;
     }
 
@@ -58,14 +60,16 @@ impl DataSet {
         label: String,
         x: u32,
         y: u32,
+        window_size: u32,
     ) -> (String, GrayImage) {
         let img = open(image_path).unwrap().to_luma8();
-        let window = window_crop(&img, 28, 28, (x, y));
+        let window = window_crop(&img, window_size, window_size, (x, y));
         (label, window)
     }
 
     pub fn load_annotations(
         pathes: Vec<(String, String)>,
+        window_size: u32,
         augment: bool,
     ) -> Vec<(String, GrayImage)> {
         let mut annotations = Vec::new();
@@ -80,8 +84,13 @@ impl DataSet {
                         let y: u32 = l.next().unwrap().parse().unwrap();
                         match augment {
                             true => {
-                                let annotation =
-                                    Self::load_annotation(path.1.clone(), label.to_string(), x, y);
+                                let annotation = Self::load_annotation(
+                                    path.1.clone(),
+                                    label.to_string(),
+                                    x,
+                                    y,
+                                    window_size,
+                                );
                                 let frame = annotation.1.clone();
                                 let frames = std::iter::once(&frame)
                                     .cloned()
@@ -97,6 +106,7 @@ impl DataSet {
                                     label.to_string(),
                                     x,
                                     y,
+                                    window_size,
                                 ));
                             }
                         };
@@ -112,6 +122,7 @@ impl DataSet {
         image: &GrayImage,
         label: String,
         count: usize,
+        window_size: u32,
     ) -> Vec<(String, GrayImage)> {
         let mut annotations = Vec::new();
         let mut rng: ThreadRng = rand::thread_rng();
@@ -119,7 +130,10 @@ impl DataSet {
         for _ in 0..count {
             let x = rng.gen_range(0..=image.width());
             let y = rng.gen_range(0..=image.height());
-            annotations.push((label.to_string(), window_crop(&image, 28, 28, (x, y))));
+            annotations.push((
+                label.to_string(),
+                window_crop(&image, window_size, window_size, (x, y)),
+            ));
         }
         annotations
     }
@@ -133,6 +147,7 @@ impl DataSet {
                     &img,
                     "none".to_string(),
                     count_each,
+                    self.window_size,
                 ));
         }
     }
@@ -181,9 +196,23 @@ impl DataSet {
 
         // Vec to ndarray
         let as_arr = NdArray::from_shape_vec;
-        let x_train = as_arr(ndarray::IxDyn(&[num_image_train, 28 * 28]), train_x).unwrap();
+        let x_train = as_arr(
+            ndarray::IxDyn(&[
+                num_image_train,
+                (self.window_size * self.window_size) as usize,
+            ]),
+            train_x,
+        )
+        .unwrap();
         let y_train = as_arr(ndarray::IxDyn(&[num_label_train, 1]), train_y).unwrap();
-        let x_test = as_arr(ndarray::IxDyn(&[num_image_test, 28 * 28]), test_x).unwrap();
+        let x_test = as_arr(
+            ndarray::IxDyn(&[
+                num_image_test,
+                (self.window_size * self.window_size) as usize,
+            ]),
+            test_x,
+        )
+        .unwrap();
         let y_test = as_arr(ndarray::IxDyn(&[num_label_test, 1]), test_y).unwrap();
         ((x_train, y_train), (x_test, y_test))
     }
@@ -210,15 +239,19 @@ mod tests {
             "res/training/webcam01.txt".to_string(),
             "res/training/webcam01.jpg".to_string(),
         )];
-        let annotations = DataSet::load_annotations(pathes, false);
-        assert_eq!(annotations.len(), 4);
+        let annotations = DataSet::load_annotations(pathes, 28, false);
+        assert_eq!(annotations.len(), 6);
     }
 
     #[test]
     fn test_dataset() {
-        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        let mut dataset = DataSet::new(
+            "res/training/".to_string(),
+            "res/labels.txt".to_string(),
+            28,
+        );
         dataset.load(false);
-        assert_eq!(dataset.samples(), 8);
+        assert_eq!(dataset.samples(), 12);
     }
 
     #[test]
@@ -240,23 +273,31 @@ mod tests {
 
     #[test]
     fn test_load_augmented() {
-        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        let mut dataset = DataSet::new(
+            "res/training/".to_string(),
+            "res/labels.txt".to_string(),
+            28,
+        );
         dataset.load(true);
-        assert_eq!(dataset.samples(), 168);
+        assert_eq!(dataset.samples(), 252);
     }
 
     #[test]
     fn test_generate_random_annotations() {
         let image = GrayImage::new(32, 32);
         let annotations =
-            DataSet::generate_random_annotations_from_image(&image, "none".to_string(), 5);
+            DataSet::generate_random_annotations_from_image(&image, "none".to_string(), 5, 28);
         assert_eq!(annotations.len(), 5);
         assert_eq!(annotations.last().unwrap().0, "none");
 
-        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        let mut dataset = DataSet::new(
+            "res/training/".to_string(),
+            "res/labels.txt".to_string(),
+            28,
+        );
         dataset.load(true);
-        assert_eq!(dataset.samples(), 168);
+        assert_eq!(dataset.samples(), 252);
         dataset.generate_random_annotations(1);
-        assert_eq!(dataset.samples(), 170);
+        assert_eq!(dataset.samples(), 254);
     }
 }

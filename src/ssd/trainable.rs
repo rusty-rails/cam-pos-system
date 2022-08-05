@@ -32,12 +32,17 @@ fn conv_pool<'g>(x: Tensor<'g>, w: Tensor<'g>, b: Tensor<'g>, train: bool) -> Te
     T::dropout(y3, 0.25, train)
 }
 
-pub fn compute_logits<'g>(c: &'g Context<f32>, train: bool) -> Tensor<'g> {
-    let x = c.placeholder("x", &[-1, 28 * 28]);
-    let x = x.reshape(&[-1, 1, 28, 28]); // 2D -> 4D
+pub fn compute_logits<'g>(
+    c: &'g Context<f32>,
+    input_width: isize,
+    input_height: isize,
+    train: bool,
+) -> Tensor<'g> {
+    let x = c.placeholder("x", &[-1, input_width * input_height]);
+    let x = x.reshape(&[-1, 1, input_width, input_height]); // 2D -> 4D
     let z1 = conv_pool(x, c.variable("w1"), c.variable("b1"), train); // map to 32 channel
     let z2 = conv_pool(z1, c.variable("w2"), c.variable("b2"), train); // map to 64 channel
-    let z3 = T::reshape(z2, &[-1, 64 * 7 * 7]); // flatten
+    let z3 = T::reshape(z2, &[-1, 64 * input_width / 4 * input_height / 4]); // flatten
     let z4 = T::matmul(z3, c.variable("w3")) + c.variable("b3");
     T::dropout(z4, 0.25, train)
 }
@@ -56,7 +61,7 @@ pub trait Trainable {
 impl Trainable for Model<'_> {
     fn train(&mut self, dataset: &DataSet, epochs: usize) {
         let ((x_train, y_train), (_x_test, _y_test)) = dataset.get();
-        let batch_size = 64isize;
+        let batch_size = 32isize;
         let num_train_samples = x_train.shape()[0];
         let num_batches = num_train_samples / batch_size as usize;
 
@@ -67,9 +72,11 @@ impl Trainable for Model<'_> {
                     let i = i as isize * batch_size;
                     let x_batch = x_train.slice(s![i..i + batch_size, ..]).into_dyn();
                     let y_batch = y_train.slice(s![i..i + batch_size, ..]).into_dyn();
+                    let (input_width, input_height) =
+                        (self.input_width as isize, self.input_height as isize);
 
                     self.env.run(|ctx| {
-                        let logits = compute_logits(ctx, true);
+                        let logits = compute_logits(ctx, input_width, input_height, true);
                         let loss =
                             T::sparse_softmax_cross_entropy(logits, ctx.placeholder("y", &[-1, 1]));
                         let mean_loss = T::reduce_mean(loss, &[0], false);
@@ -101,7 +108,12 @@ impl Trainable for Model<'_> {
     fn evaluate(&self, dataset: &DataSet) {
         let ((_x_train, _y_train), (x_test, y_test)) = dataset.get();
         self.env.run(|ctx| {
-            let logits = compute_logits(ctx, false);
+            let logits = compute_logits(
+                ctx,
+                self.input_width as isize,
+                self.input_height as isize,
+                false,
+            );
             let predictions = T::argmax(logits, -1, true);
             let accuracy = T::reduce_mean(
                 &T::equal(predictions, ctx.placeholder("y", &[-1, 1])),
@@ -126,19 +138,27 @@ mod tests {
 
     #[test]
     fn test_training() {
-        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        let mut dataset = DataSet::new(
+            "res/training/".to_string(),
+            "res/labels.txt".to_string(),
+            28,
+        );
         dataset.load(false);
-        assert_eq!(dataset.samples(), 8);
-        let mut model = Model::new();
+        assert_eq!(dataset.samples(), 12);
+        let mut model = Model::new(28, 28);
         model.train(&dataset, 10);
     }
 
     #[test]
     fn test_evaluate() {
-        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        let mut dataset = DataSet::new(
+            "res/training/".to_string(),
+            "res/labels.txt".to_string(),
+            28,
+        );
         dataset.load(true);
-        assert_eq!(dataset.samples(), 168);
-        let mut model = Model::new();
+        assert_eq!(dataset.samples(), 252);
+        let mut model = Model::new(28, 28);
         model.train(&dataset, 100);
         model.evaluate(&dataset);
     }

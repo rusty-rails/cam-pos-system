@@ -25,10 +25,19 @@ impl Predictable for Model<'_> {
             windows.len(),
         );
         let as_arr = NdArray::from_shape_vec;
-        let x = as_arr(ndarray::IxDyn(&[num_image, 28 * 28]), x).unwrap();
+        let x = as_arr(
+            ndarray::IxDyn(&[num_image, self.input_width * self.input_height]),
+            x,
+        )
+        .unwrap();
 
         let prediction = self.env.run(|ctx| {
-            let logits = compute_logits(ctx, false);
+            let logits = compute_logits(
+                ctx,
+                self.input_width as isize,
+                self.input_height as isize,
+                false,
+            );
             let predictions = T::argmax(logits, -1, true);
             ctx.evaluator().push(predictions).feed("x", x.view()).run()[0]
                 .as_ref()
@@ -39,7 +48,7 @@ impl Predictable for Model<'_> {
     }
 
     fn predict_image(&mut self, image: GrayImage) -> Vec<u32> {
-        let (_cols, _rows, windows) = windows(&image, 28);
+        let (_cols, _rows, windows) = windows(&image, self.input_width as u32);
 
         let (x, num_image): (Vec<f32>, usize) = (
             windows
@@ -49,10 +58,19 @@ impl Predictable for Model<'_> {
             windows.len(),
         );
         let as_arr = NdArray::from_shape_vec;
-        let x = as_arr(ndarray::IxDyn(&[num_image, 28 * 28]), x).unwrap();
+        let x = as_arr(
+            ndarray::IxDyn(&[num_image, self.input_width * self.input_height]),
+            x,
+        )
+        .unwrap();
 
         let prediction = self.env.run(|ctx| {
-            let logits = compute_logits(ctx, false);
+            let logits = compute_logits(
+                ctx,
+                self.input_width as isize,
+                self.input_height as isize,
+                false,
+            );
             let predictions = T::argmax(logits, -1, true);
             ctx.evaluator().push(predictions).feed("x", x.view()).run()[0]
                 .as_ref()
@@ -63,7 +81,7 @@ impl Predictable for Model<'_> {
     }
 
     fn predict_to_image(&mut self, image: GrayImage) -> DynamicImage {
-        let window_size = 28;
+        let window_size = self.input_width as u32;
         let cols = image.width() / window_size;
         let rows = image.height() / window_size;
         let predictions = self.predict_image(image.clone());
@@ -164,26 +182,36 @@ mod tests {
 
     #[test]
     fn test_training() {
-        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        let mut dataset = DataSet::new(
+            "res/training/".to_string(),
+            "res/labels.txt".to_string(),
+            28,
+        );
         dataset.load(false);
-        assert_eq!(dataset.samples(), 8);
-        let mut model = Model::new();
+        assert_eq!(dataset.samples(), 12);
+        let mut model = Model::new(28, 28);
         model.train(&dataset, 10);
     }
 
     #[test]
     fn test_predict() {
+
+        let window_size = 28;
         let webcam1 = open("res/webcam01.jpg").unwrap().to_luma8();
-        let loco5 = window_crop(&webcam1, 28, 28, (300, 400));
-        let marker1 = window_crop(&webcam1, 28, 28, (600, 100));
-        let marker2 = window_crop(&webcam1, 28, 28, (100, 50));
+        let loco5 = window_crop(&webcam1, window_size, window_size, (280, 370));
+        let marker1 = window_crop(&webcam1, window_size, window_size, (540, 90));
+        let marker2 = window_crop(&webcam1, window_size, window_size, (100, 25));
 
         let images = vec![loco5, marker1, marker2];
 
-        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        let mut dataset = DataSet::new(
+            "res/training/".to_string(),
+            "res/labels.txt".to_string(),
+            28,
+        );
         dataset.load(true);
-        assert_eq!(dataset.samples(), 168);
-        let mut model = Model::new();
+        assert_eq!(dataset.samples(), 252);
+        let mut model = Model::new(28, 28);
         model.train(&dataset, 100);
         assert_eq!(model.predict(images), vec![5, 1, 2]);
     }
@@ -203,7 +231,11 @@ mod tests {
     fn test_predict_image() {
         let webcam1 = open("res/webcam01.jpg").unwrap().to_luma8();
 
-        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        let mut dataset = DataSet::new(
+            "res/training/".to_string(),
+            "res/labels.txt".to_string(),
+            28,
+        );
         dataset.load(true);
         dataset.generate_random_annotations(100);
         println!(
@@ -214,7 +246,7 @@ mod tests {
                 .map(|(l, _)| l.to_string())
                 .collect::<Vec<String>>()
         );
-        let mut model = Model::new();
+        let mut model = Model::new(28, 28);
         model.train(&dataset, 100);
         assert!(model.predict_image(webcam1).len() > 0);
     }
@@ -233,13 +265,17 @@ mod tests {
     fn test_predict_to_image() {
         let window_size = 64;
         let webcam1 = open("res/webcam01.jpg").unwrap().to_luma8();
-        let loco5 = window_crop(&webcam1, window_size, window_size, (300, 400));
-        let marker1 = window_crop(&webcam1, window_size, window_size, (600, 100));
-        let marker2 = window_crop(&webcam1, window_size, window_size, (100, 50));
+        let loco5 = window_crop(&webcam1, window_size, window_size, (280, 370));
+        let marker1 = window_crop(&webcam1, window_size, window_size, (540, 90));
+        let marker2 = window_crop(&webcam1, window_size, window_size, (100, 25));
 
-        let mut dataset = DataSet::new("res/training/".to_string(), "res/labels.txt".to_string());
+        let mut dataset = DataSet::new(
+            "res/training/".to_string(),
+            "res/labels.txt".to_string(),
+            24,
+        );
         dataset.load(true);
-        dataset.generate_random_annotations(100);
+        dataset.generate_random_annotations(10);
         println!(
             "{:?}",
             dataset
@@ -248,8 +284,8 @@ mod tests {
                 .map(|(l, _)| l.to_string())
                 .collect::<Vec<String>>()
         );
-        let mut model = Model::new();
-        model.train(&dataset, 500);
+        let mut model = Model::new(24, 24);
+        model.train(&dataset, 125);
 
         model
             .predict_to_image(webcam1)

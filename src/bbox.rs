@@ -81,6 +81,6 @@ mod tests {
             w: 4.4,
             h: 4.4,
         };
-        assert_eq!(b1.overlay(&b2), 1.0);
+        assert!(b1.overlay(&b2) > 1.0);
     }
 }
