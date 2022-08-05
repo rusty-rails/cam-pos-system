@@ -56,7 +56,7 @@ pub trait Trainable {
 impl Trainable for Model<'_> {
     fn train(&mut self, dataset: &DataSet, epochs: usize) {
         let ((x_train, y_train), (_x_test, _y_test)) = dataset.get();
-        let batch_size = 32isize;
+        let batch_size = 64isize;
         let num_train_samples = x_train.shape()[0];
         let num_batches = num_train_samples / batch_size as usize;
 

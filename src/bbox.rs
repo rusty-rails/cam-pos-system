@@ -46,19 +46,41 @@ impl BBox {
     }
 }
 
-#[test]
-pub fn iou() {
-    let b1 = BBox {
-        x: 0.5,
-        y: 0.5,
-        w: 1.0,
-        h: 1.0,
-    };
-    assert_eq!(b1.left(), 0.0);
-    assert_eq!(b1.right(), 1.0);
-    assert_eq!(b1.top(), 0.0);
-    assert_eq!(b1.bot(), 1.0);
-    assert_eq!(b1.overlay(&b1), 1.0);
-    assert_eq!(b1.union(&b1), 1.0);
-    assert_eq!(b1.iou(&b1), 1.0);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn iou() {
+        let b1 = BBox {
+            x: 0.5,
+            y: 0.5,
+            w: 1.0,
+            h: 1.0,
+        };
+        assert_eq!(b1.left(), 0.0);
+        assert_eq!(b1.right(), 1.0);
+        assert_eq!(b1.top(), 0.0);
+        assert_eq!(b1.bot(), 1.0);
+        assert_eq!(b1.overlay(&b1), 1.0);
+        assert_eq!(b1.union(&b1), 1.0);
+        assert_eq!(b1.iou(&b1), 1.0);
+    }
+
+    #[test]
+    pub fn overlay() {
+        let b1 = BBox {
+            x: 4.0,
+            y: 4.0,
+            w: 4.4,
+            h: 4.4,
+        };
+        let b2 = BBox {
+            x: 8.0,
+            y: 4.0,
+            w: 4.4,
+            h: 4.4,
+        };
+        assert_eq!(b1.overlay(&b2), 1.0);
+    }
 }
