@@ -226,11 +226,14 @@ impl DataSet {
 mod tests {
     use super::*;
 
+    const LABELS : usize = 18;
+    const IMAGES_PER_LABEL: usize = 21;
+
     #[test]
     fn test_list_files() {
         let path = "res/training";
         let file_pathes = DataSet::list_pathes(path);
-        assert_eq!(file_pathes.len(), 2);
+        assert_eq!(file_pathes.len(), 3);
     }
 
     #[test]
@@ -251,7 +254,7 @@ mod tests {
             28,
         );
         dataset.load(false);
-        assert_eq!(dataset.samples(), 12);
+        assert_eq!(dataset.samples(), 18);
     }
 
     #[test]
@@ -279,7 +282,7 @@ mod tests {
             28,
         );
         dataset.load(true);
-        assert_eq!(dataset.samples(), 252);
+        assert_eq!(dataset.samples(), LABELS * IMAGES_PER_LABEL);
     }
 
     #[test]
@@ -296,8 +299,8 @@ mod tests {
             28,
         );
         dataset.load(true);
-        assert_eq!(dataset.samples(), 252);
+        assert_eq!(dataset.samples(), LABELS * IMAGES_PER_LABEL);
         dataset.generate_random_annotations(1);
-        assert_eq!(dataset.samples(), 254);
+        assert_eq!(dataset.samples(), LABELS * IMAGES_PER_LABEL+3);
     }
 }

@@ -1,0 +1,6 @@
+marker1 530 95
+marker2 110 65
+marker3 40 320
+loco5 570 180
+loco5 555 150
+loco5 540 130
