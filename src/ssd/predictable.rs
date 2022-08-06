@@ -12,13 +12,13 @@ use imageproc::rect::Rect;
 use rusttype::{Font, Scale};
 
 pub trait Predictable {
-    fn predict(&mut self, windows: Vec<RgbImage>) -> Vec<u32>;
-    fn predict_image(&mut self, windows: RgbImage) -> Vec<u32>;
-    fn predict_to_image(&mut self, image: RgbImage) -> DynamicImage;
+    fn predict(&self, windows: Vec<RgbImage>) -> Vec<u32>;
+    fn predict_image(&self, windows: RgbImage) -> Vec<u32>;
+    fn predict_to_image(&self, image: RgbImage) -> DynamicImage;
 }
 
 impl Predictable for Model<'_> {
-    fn predict(&mut self, windows: Vec<RgbImage>) -> Vec<u32> {
+    fn predict(&self, windows: Vec<RgbImage>) -> Vec<u32> {
         let (x, num_image): (Vec<f32>, usize) = (
             windows.iter().flat_map(|img| preprocess(&img)).collect(),
             windows.len(),
@@ -46,7 +46,7 @@ impl Predictable for Model<'_> {
         prediction.iter().map(|v| *v as u32).collect()
     }
 
-    fn predict_image(&mut self, image: RgbImage) -> Vec<u32> {
+    fn predict_image(&self, image: RgbImage) -> Vec<u32> {
         let (_cols, _rows, windows) = windows(&image, self.input_width as u32);
 
         let (x, num_image): (Vec<f32>, usize) = (
@@ -79,7 +79,7 @@ impl Predictable for Model<'_> {
         prediction.iter().map(|v| *v as u32).collect()
     }
 
-    fn predict_to_image(&mut self, image: RgbImage) -> DynamicImage {
+    fn predict_to_image(&self, image: RgbImage) -> DynamicImage {
         let window_size = self.input_width as u32;
         let cols = 2 * (image.width() / window_size);
         let rows = 2 * (image.height() / window_size);

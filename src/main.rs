@@ -4,7 +4,8 @@ use cam_pos_system::object_detection;
 use cam_pos_system::ssd::yolo::Yolo;
 use cam_pos_system::stream::MJpeg;
 use cam_pos_system::tracker::Tracker;
-use image::{DynamicImage, ImageBuffer, Rgb};
+use cam_pos_system::ssd::{model::Model, dataset::DataSet, trainable::Trainable, predictable::Predictable};
+use image::{DynamicImage, ImageBuffer, Rgb, RgbImage};
 use nalgebra::Point2;
 use nokhwa::ThreadedCamera;
 use rocket::fs::FileServer;
@@ -89,6 +90,29 @@ fn yolo(
         let image = {
             let yolo = yolo.lock().unwrap();
             yolo.run(&base_img)
+        };
+        let mut buf = vec![];
+        image
+            .write_to(&mut buf, image::ImageOutputFormat::Jpeg(70))
+            .unwrap();
+        buf
+    };
+    (Status::Ok, (ContentType::JPEG, frame))
+}
+
+#[get("/ssd")]
+fn ssd(
+    frame: &'_ State<Arc<Mutex<Frame>>>,
+    model: &'_ State<Arc<Mutex<Model>>>,
+) -> (Status, (ContentType, Vec<u8>)) {
+    let frame = {
+        let base_img: RgbImage = {
+            let img = frame.lock().unwrap();
+            img.raw.clone()
+        };
+        let image = {
+            let model = model.lock().unwrap();
+            model.predict_to_image(base_img)
         };
         let mut buf = vec![];
         image
@@ -195,6 +219,26 @@ async fn run_tracker(tracker: Arc<Mutex<Tracker>>, frame: Arc<Mutex<Frame>>) {
     }
 }
 
+async fn train_model<'a>(model: Arc<Mutex<Model<'a>>>) {
+    let mut dataset = DataSet::new(
+        "res/training/".to_string(),
+        "res/labels.txt".to_string(),
+        32,
+    );
+    dataset.load(true);
+    dataset.generate_random_annotations(25);
+    println!(
+        "{:?}",
+        dataset
+            .data
+            .iter()
+            .map(|(l, _)| l.to_string())
+            .collect::<Vec<String>>()
+    );
+    let mut model = model.try_lock().unwrap();
+    model.train(&dataset, 225);
+}
+
 #[tokio::main]
 async fn main() {
     let frame = Arc::new(Mutex::new(Frame::default()));
@@ -263,6 +307,10 @@ async fn main() {
 
     let yolo = Arc::new(Mutex::new(Yolo::default()));
 
+    let model = Arc::new(Mutex::new(Model::new(32, 32)));
+
+    let model_thread = tokio::spawn(train_model(model.clone()));
+
     let launcher = rocket::build()
         .mount("/", FileServer::from("static"))
         .mount(
@@ -271,6 +319,7 @@ async fn main() {
                 frame,
                 luma,
                 yolo,
+                ssd,
                 tracked,
                 tracked_stream,
                 get_coords,
@@ -282,8 +331,10 @@ async fn main() {
         .manage(frame)
         .manage(tracker)
         .manage(coords)
-        .manage(yolo);
+        .manage(yolo)
+        .manage(model);
     let _server = launcher.launch().await.unwrap();
     fetch_frame_thread.abort();
     tracker_thread.abort();
+    model_thread.abort();
 }
