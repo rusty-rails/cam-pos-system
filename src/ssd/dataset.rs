@@ -1,8 +1,8 @@
 use super::NdArray;
+use super::{preprocess, rotated_frames, scaled_frames, window_crop};
 use ag::ndarray;
 use autograd as ag;
 use image::{open, RgbImage};
-use super::{window_crop, rotated_frames, scaled_frames, preprocess};
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::fs::read_dir;
@@ -226,7 +226,7 @@ impl DataSet {
 mod tests {
     use super::*;
 
-    const LABELS : usize = 18;
+    const LABELS: usize = 18;
     const IMAGES_PER_LABEL: usize = 21;
 
     #[test]
@@ -301,6 +301,6 @@ mod tests {
         dataset.load(true);
         assert_eq!(dataset.samples(), LABELS * IMAGES_PER_LABEL);
         dataset.generate_random_annotations(1);
-        assert_eq!(dataset.samples(), LABELS * IMAGES_PER_LABEL+3);
+        assert_eq!(dataset.samples(), LABELS * IMAGES_PER_LABEL + 3);
     }
 }

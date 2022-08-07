@@ -1,12 +1,12 @@
 use super::model::Model;
 use super::trainable::compute_logits;
-use super::{NdArray, preprocess};
+use super::{preprocess, NdArray};
 use crate::bbox::BBox;
 use crate::detection::{merge, nms_sort, Detection};
 use ag::ndarray;
 use ag::tensor_ops as T;
 use autograd as ag;
-use image::{DynamicImage, Rgba, SubImage, RgbImage};
+use image::{DynamicImage, RgbImage, Rgba, SubImage};
 use imageproc::drawing::{draw_cross_mut, draw_hollow_rect_mut, draw_text_mut};
 use imageproc::rect::Rect;
 use rusttype::{Font, Scale};
@@ -129,9 +129,15 @@ pub fn windows(image: &RgbImage, window_size: u32) -> (u32, u32, Vec<SubImage<&R
     let rows = 2 * (image.height() / window_size);
     let mut subimages = Vec::new();
 
-    for y in 0..rows-1 {
-        for x in 0..cols-1 {
-            subimages.push(SubImage::new(image, x*(window_size/2), y*(window_size/2), window_size, window_size))
+    for y in 0..rows - 1 {
+        for x in 0..cols - 1 {
+            subimages.push(SubImage::new(
+                image,
+                x * (window_size / 2),
+                y * (window_size / 2),
+                window_size,
+                window_size,
+            ))
         }
     }
 
@@ -145,9 +151,9 @@ pub fn detect_objects(
     window_size: u32,
 ) -> Vec<Detection> {
     let mut detections: Vec<Detection> = Vec::new();
-    for y in 0..rows-1 {
-        for x in 0..cols-1 {
-            let i = (y * (cols-1) + x) as usize;
+    for y in 0..rows - 1 {
+        for x in 0..cols - 1 {
+            let i = (y * (cols - 1) + x) as usize;
             let class = predictions[i] as usize;
             if class > 0 {
                 // add 0.1 to generate an overlap on contacting windows.
@@ -173,13 +179,13 @@ pub fn detect_objects(
 
 #[cfg(test)]
 mod tests {
+    use super::super::window_crop;
     use super::*;
     use crate::ssd::dataset::DataSet;
     use crate::ssd::trainable::Trainable;
     use image::open;
-    use super::super::window_crop;
 
-    const LABELS : usize = 18;
+    const LABELS: usize = 18;
     const IMAGES_PER_LABEL: usize = 21;
 
     #[test]
@@ -197,7 +203,6 @@ mod tests {
 
     #[test]
     fn test_predict() {
-
         let window_size = 28;
         let webcam1 = open("res/webcam01.jpg").unwrap().to_rgb8();
         let loco5 = window_crop(&webcam1, window_size, window_size, (280, 370));

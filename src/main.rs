@@ -2,9 +2,11 @@ use cam_pos_system::coords::Coords;
 use cam_pos_system::frame::Frame;
 use cam_pos_system::object_detection;
 use cam_pos_system::ssd::yolo::Yolo;
+use cam_pos_system::ssd::{
+    dataset::DataSet, model::Model, predictable::Predictable, trainable::Trainable,
+};
 use cam_pos_system::stream::MJpeg;
 use cam_pos_system::tracker::Tracker;
-use cam_pos_system::ssd::{model::Model, dataset::DataSet, trainable::Trainable, predictable::Predictable};
 use image::{DynamicImage, ImageBuffer, Rgb, RgbImage};
 use nalgebra::Point2;
 use nokhwa::ThreadedCamera;

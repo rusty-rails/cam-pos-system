@@ -52,8 +52,47 @@ nokhwa = { version = "0.9.4", default-features = false, features = [
     "input-jscam",
 ] }
 console_error_panic_hook = "0.1"
-wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 getrandom = { version = "0.2.7", features = ["js"] }
+js-sys = "0.3"
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+wasm-bindgen-futures = "0.4.30"
+web-sys = { version="0.3.59", features = [
+    "console",
+    "CanvasRenderingContext2d",
+    "EncodedVideoChunk",
+    "EncodedVideoChunkInit",
+    "EncodedVideoChunkType",
+    "HtmlCanvasElement",
+    "HtmlImageElement",
+    "Navigator",
+    "MediaDevices",
+    "MediaStream",
+    "MediaStreamTrack",
+    "MediaTrackSettings",
+    "MediaStreamTrackProcessor",
+    "MediaStreamTrackProcessorInit",
+    "HtmlVideoElement",
+    "MediaStreamConstraints",
+    "ReadableStream",
+    "ReadableStreamGetReaderOptions",
+    "ReadableStreamDefaultReader",
+    "VideoEncoder",
+    "VideoEncoderInit",
+    "VideoEncoderConfig",
+    "VideoFrame",
+    "VideoTrack",
+    "VideoDecoder",
+    "VideoDecoderConfig",
+    "VideoDecoderInit",
+    "VideoPixelFormat"
+] }
+yew = "0.19"
+log = "0.4.6"
+wasm-logger = "0.2.0"
+
+[target.wasm32-unknown-unknown.features]
+default = []
+
 
 [profile.release]
 opt-level = "s"

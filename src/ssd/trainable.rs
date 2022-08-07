@@ -136,7 +136,7 @@ impl Trainable for Model<'_> {
 mod tests {
     use super::*;
 
-    const LABELS : usize = 18;
+    const LABELS: usize = 18;
     const IMAGES_PER_LABEL: usize = 21;
 
     #[test]

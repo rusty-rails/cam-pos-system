@@ -1,6 +1,6 @@
 use ag::ndarray;
 use autograd as ag;
-use image::{imageops, RgbImage, Rgb};
+use image::{imageops, Rgb, RgbImage};
 use imageproc::geometric_transformations::{rotate_about_center, warp, Interpolation, Projection};
 use std::f32;
 
@@ -44,7 +44,8 @@ pub fn rotated_frames(frame: &RgbImage) -> impl Iterator<Item = RgbImage> + '_ {
     .iter()
     .map(|rad| {
         // Rotate an image clockwise about its center by theta radians.
-        let training_frame = rotate_about_center(frame, *rad, Interpolation::Nearest, Rgb([0,0,0]));
+        let training_frame =
+            rotate_about_center(frame, *rad, Interpolation::Nearest, Rgb([0, 0, 0]));
 
         #[cfg(debug_assertions)]
         {
@@ -63,7 +64,7 @@ pub fn scaled_frames(frame: &RgbImage) -> impl Iterator<Item = RgbImage> + '_ {
     let scaled_frames = [0.8, 0.9, 1.1, 1.2].into_iter().map(|scalefactor| {
         let scale = Projection::scale(scalefactor, scalefactor);
 
-        let scaled_training_frame = warp(frame, &scale, Interpolation::Nearest, Rgb([0,0,0]));
+        let scaled_training_frame = warp(frame, &scale, Interpolation::Nearest, Rgb([0, 0, 0]));
 
         #[cfg(debug_assertions)]
         {
@@ -78,14 +79,17 @@ pub fn scaled_frames(frame: &RgbImage) -> impl Iterator<Item = RgbImage> + '_ {
 }
 
 pub fn preprocess(image: &RgbImage) -> Vec<f32> {
-    let prepped: Vec<f32> = image.clone().into_raw().into_iter()
+    let prepped: Vec<f32> = image
+        .clone()
+        .into_raw()
+        .into_iter()
         // convert the pixel to u8 and then to f32
         .map(|p| p as f32)
         // add 1, and take the natural logarithm
         .map(|p| (p + 1.0).ln())
         .collect();
 
-    assert_eq!(prepped.len() as u32, image.width() * image.height() *3);
+    assert_eq!(prepped.len() as u32, image.width() * image.height() * 3);
 
     return prepped;
 }

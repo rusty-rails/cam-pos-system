@@ -1,5 +1,8 @@
 use crate::tracker::Tracker;
 use wasm_bindgen::prelude::*;
+use web_sys;
+
+pub mod gui;
 
 #[wasm_bindgen]
 pub struct TrackerJS {
@@ -37,4 +40,10 @@ impl TrackerJS {
         .unwrap();
         image_data
     }
+}
+
+#[wasm_bindgen]
+pub fn main(root: web_sys::Element) {
+    wasm_logger::init(wasm_logger::Config::default());
+    yew::start_app_in_element::<gui::App>(root);
 }
