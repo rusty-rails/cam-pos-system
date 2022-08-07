@@ -1,6 +1,10 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
+* @param {Element} root
+*/
+export function main(root: Element): void;
+/**
 */
 export class TrackerJS {
   free(): void;
@@ -30,10 +34,16 @@ export interface InitOutput {
   readonly trackerjs_new: (a: number, b: number) => number;
   readonly trackerjs_set_target: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly trackerjs_next: (a: number, b: number, c: number, d: number) => void;
+  readonly main: (a: number) => void;
   readonly __wbindgen_malloc: (a: number) => number;
+  readonly __wbindgen_realloc: (a: number, b: number, c: number) => number;
+  readonly __wbindgen_export_2: WebAssembly.Table;
+  readonly _dyn_core__ops__function__Fn__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h861086152b2255f9: (a: number, b: number, c: number) => void;
+  readonly _dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__hd662a9c6bf2cf73a: (a: number, b: number, c: number) => void;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_free: (a: number, b: number) => void;
-  readonly __wbindgen_realloc: (a: number, b: number, c: number) => number;
+  readonly __wbindgen_exn_store: (a: number) => void;
+  readonly wasm_bindgen__convert__closures__invoke3_mut__h9be331acf3352d7f: (a: number, b: number, c: number, d: number, e: number) => number;
 }
 
 /**
