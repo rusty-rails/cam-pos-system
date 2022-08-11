@@ -1,16 +1,13 @@
-use ag::ndarray;
-use autograd as ag;
 use image::{imageops, Rgb, RgbImage};
 use imageproc::geometric_transformations::{rotate_about_center, warp, Interpolation, Projection};
 use std::f32;
 
 pub mod dataset;
-pub mod model;
+pub mod lenet;
+pub mod mobilenet;
 pub mod predictable;
 pub mod trainable;
 pub mod yolo;
-
-pub type NdArray = ndarray::Array<f32, ndarray::IxDyn>;
 
 pub fn window_crop(
     input_frame: &RgbImage,

@@ -3,7 +3,7 @@ use cam_pos_system::frame::Frame;
 use cam_pos_system::object_detection;
 use cam_pos_system::ssd::yolo::Yolo;
 use cam_pos_system::ssd::{
-    dataset::DataSet, model::Model, predictable::Predictable, trainable::Trainable,
+    dataset::DataSet, lenet::Lenet, predictable::Predictable, trainable::Trainable,
 };
 use cam_pos_system::stream::MJpeg;
 use cam_pos_system::tracker::Tracker;
@@ -105,7 +105,7 @@ fn yolo(
 #[get("/ssd")]
 fn ssd(
     frame: &'_ State<Arc<Mutex<Frame>>>,
-    model: &'_ State<Arc<Mutex<Model>>>,
+    model: &'_ State<Arc<Mutex<Lenet>>>,
 ) -> (Status, (ContentType, Vec<u8>)) {
     let frame = {
         let base_img: RgbImage = {
@@ -114,7 +114,7 @@ fn ssd(
         };
         let image = {
             let model = model.lock().unwrap();
-            model.predict_to_image(base_img)
+            smol::block_on(model.predict_to_image(base_img))
         };
         let mut buf = vec![];
         image
@@ -221,7 +221,7 @@ async fn run_tracker(tracker: Arc<Mutex<Tracker>>, frame: Arc<Mutex<Frame>>) {
     }
 }
 
-async fn train_model<'a>(model: Arc<Mutex<Model<'a>>>) {
+async fn train_model<'a>(model: Arc<Mutex<Lenet>>) {
     let mut dataset = DataSet::new(
         "res/training/".to_string(),
         "res/labels.txt".to_string(),
@@ -238,7 +238,7 @@ async fn train_model<'a>(model: Arc<Mutex<Model<'a>>>) {
             .collect::<Vec<String>>()
     );
     let mut model = model.try_lock().unwrap();
-    model.train(&dataset, 225);
+    let _ = model.train(&dataset, 225);
 }
 
 #[tokio::main]
@@ -309,7 +309,7 @@ async fn main() {
 
     let yolo = Arc::new(Mutex::new(Yolo::default()));
 
-    let model = Arc::new(Mutex::new(Model::new(32, 32)));
+    let model = Arc::new(Mutex::new(Lenet::new(32, 32)));
 
     let model_thread = tokio::spawn(train_model(model.clone()));
 

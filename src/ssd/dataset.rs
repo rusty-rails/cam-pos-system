@@ -1,14 +1,17 @@
-use super::NdArray;
 use super::{preprocess, rotated_frames, scaled_frames, window_crop};
-use ag::ndarray;
-use autograd as ag;
+use autograph::{
+    device::Device,
+    result::Result,
+    tensor::{float::FloatTensor4, Tensor, Tensor1, TensorView},
+};
 use image::{open, RgbImage};
-use rand::prelude::ThreadRng;
-use rand::Rng;
-use std::fs::read_dir;
-use std::fs::File;
+use ndarray::{Array1, Array4, ArrayView1, ArrayView4, Axis};
+use rand::{rngs::ThreadRng, seq::SliceRandom, Rng};
+use std::fs::{read_dir, File};
 use std::io::{self, BufRead};
 use std::vec;
+
+pub type NdArray = ndarray::Array<f32, ndarray::IxDyn>;
 
 pub struct DataSet {
     path: String,
@@ -159,12 +162,12 @@ impl DataSet {
         props
     }
 
-    pub fn label_id(label: &str, labels: &Vec<String>) -> Vec<f32> {
+    pub fn label_id(label: &str, labels: &Vec<String>) -> Vec<u8> {
         let idx = labels.into_iter().position(|x| x == label).unwrap();
-        vec![idx as f32]
+        vec![idx as u8]
     }
 
-    pub fn get(&self) -> ((NdArray, NdArray), (NdArray, NdArray)) {
+    pub fn get(&self) -> ((Array4<f32>, Array1<u8>), (Array4<f32>, Array1<u8>)) {
         let (train_x, num_image_train): (Vec<f32>, usize) = (
             self.data
                 .iter()
@@ -172,7 +175,7 @@ impl DataSet {
                 .collect(),
             self.data.len(),
         );
-        let (train_y, num_label_train): (Vec<f32>, usize) = (
+        let (train_y, num_label_train): (Vec<u8>, usize) = (
             self.data
                 .iter()
                 .flat_map(|(label, _)| Self::label_id(label, &self.names))
@@ -186,7 +189,7 @@ impl DataSet {
                 .collect(),
             self.data.len(),
         );
-        let (test_y, num_label_test): (Vec<f32>, usize) = (
+        let (test_y, num_label_test): (Vec<u8>, usize) = (
             self.data
                 .iter()
                 .flat_map(|(label, _)| Self::label_id(label, &self.names))
@@ -194,31 +197,106 @@ impl DataSet {
             self.data.len(),
         );
 
-        // Vec to ndarray
-        let as_arr = NdArray::from_shape_vec;
-        let x_train = as_arr(
-            ndarray::IxDyn(&[
+        let x_train = Array4::from_shape_vec(
+            (
                 num_image_train,
-                (self.window_size * self.window_size * 3) as usize,
-            ]),
+                self.window_size as usize,
+                self.window_size as usize,
+                3 as usize,
+            ),
             train_x,
         )
+        .unwrap()
+        .into_shape((
+            num_image_test,
+            3 as usize,
+            self.window_size as usize,
+            self.window_size as usize,
+        ))
         .unwrap();
-        let y_train = as_arr(ndarray::IxDyn(&[num_label_train, 1]), train_y).unwrap();
-        let x_test = as_arr(
-            ndarray::IxDyn(&[
+        let y_train = Array1::from_shape_vec((num_label_train,), train_y).unwrap();
+        let x_test = Array4::from_shape_vec(
+            (
                 num_image_test,
-                (self.window_size * self.window_size * 3) as usize,
-            ]),
+                self.window_size as usize,
+                self.window_size as usize,
+                3 as usize,
+            ),
             test_x,
         )
+        .unwrap()
+        .into_shape((
+            num_image_test,
+            3 as usize,
+            self.window_size as usize,
+            self.window_size as usize,
+        ))
         .unwrap();
-        let y_test = as_arr(ndarray::IxDyn(&[num_label_test, 1]), test_y).unwrap();
+        let y_test = Array1::from_shape_vec((num_label_test,), test_y).unwrap();
         ((x_train, y_train), (x_test, y_test))
     }
 
     pub fn samples(&self) -> usize {
         self.data.len()
+    }
+
+    pub fn batch_iter<'a>(
+        device: &'a Device,
+        images: &'a ArrayView4<f32>,
+        classes: &'a ArrayView1<u8>,
+        batch_size: usize,
+    ) -> impl ExactSizeIterator<Item = Result<(FloatTensor4, Tensor1<u8>)>> + 'a {
+        images
+            .axis_chunks_iter(Axis(0), batch_size)
+            .into_iter()
+            .zip(classes.axis_chunks_iter(Axis(0), batch_size))
+            .map(move |(x, t)| {
+                let x = smol::block_on(TensorView::try_from(x)?.into_device(device.clone()))?
+                    // normalize the bytes to f32
+                    .scale_into::<f32>(1. / 255.)?
+                    .into_float();
+                let t = smol::block_on(TensorView::try_from(t)?.into_device(device.clone()))?;
+                Ok((x, t))
+            })
+    }
+
+    pub fn shuffled_batch_iter<'a>(
+        device: &'a Device,
+        images: &'a ArrayView4<'a, f32>,
+        classes: &'a ArrayView1<'a, u8>,
+        batch_size: usize,
+    ) -> impl ExactSizeIterator<Item = Result<(FloatTensor4, Tensor1<u8>)>> + 'a {
+        let mut indices = (0..images.shape()[0]).into_iter().collect::<Vec<usize>>();
+        indices.shuffle(&mut rand::thread_rng());
+        (0..indices.len())
+            .into_iter()
+            .step_by(batch_size)
+            .map(move |index| {
+                let batch_indices = &indices[index..(index + batch_size).min(indices.len())];
+                let x = batch_indices
+                    .iter()
+                    .copied()
+                    .flat_map(|i| images.index_axis(Axis(0), i))
+                    .copied()
+                    .collect::<Array1<f32>>()
+                    .into_shape([
+                        batch_indices.len(),
+                        images.dim().1,
+                        images.dim().2,
+                        images.dim().3,
+                    ])?;
+                let t = batch_indices
+                    .iter()
+                    .copied()
+                    .map(|i| classes[i])
+                    .collect::<Array1<u8>>();
+                let x = smol::block_on(Tensor::from(x).into_device(device.clone()))?
+                    // normalize the bytes to f32
+                    .scale_into::<f32>(1. / 255.)?
+                    .into_float();
+                let t = smol::block_on(Tensor::from(t).into_device(device.clone()))?;
+                Ok((x, t))
+            })
     }
 }
 

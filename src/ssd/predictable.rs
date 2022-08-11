@@ -1,24 +1,39 @@
-use super::model::Model;
-use super::trainable::compute_logits;
-use super::{preprocess, NdArray};
+use super::lenet::Lenet;
+use super::{dataset::NdArray, preprocess};
 use crate::bbox::BBox;
 use crate::detection::{merge, nms_sort, Detection};
-use ag::ndarray;
-use ag::tensor_ops as T;
-use autograd as ag;
+use async_trait::async_trait;
+use autograph::device::{buffer::*, Device};
+use autograph::float_tensor;
+use autograph::float_tensor::FloatTensor4;
+use autograph::learn::Infer;
+use autograph::scalar::Scalar;
+use autograph::tensor::{Tensor, TensorView};
+use autograph::{
+    learn::neural_network::layer::{Conv, Dense, Forward, Layer, MaxPool, Relu},
+    result::Result,
+};
+use autograph::buffer::*;
+use autograph::{
+    device::{shader::Module},
+    buffer::{Buffer, Slice},
+};
 use image::{DynamicImage, RgbImage, Rgba, SubImage};
 use imageproc::drawing::{draw_cross_mut, draw_hollow_rect_mut, draw_text_mut};
 use imageproc::rect::Rect;
+use ndarray::{Array1, Array4, Axis};
 use rusttype::{Font, Scale};
 
+#[async_trait]
 pub trait Predictable {
-    fn predict(&self, windows: Vec<RgbImage>) -> Vec<u32>;
-    fn predict_image(&self, windows: RgbImage) -> Vec<u32>;
-    fn predict_to_image(&self, image: RgbImage) -> DynamicImage;
+    async fn predict(&self, windows: Vec<RgbImage>) -> Vec<u32>;
+    async fn predict_image(&self, windows: RgbImage) -> Vec<u32>;
+    async fn predict_to_image(&self, image: RgbImage) -> DynamicImage;
 }
 
-impl Predictable for Model<'_> {
-    fn predict(&self, windows: Vec<RgbImage>) -> Vec<u32> {
+#[async_trait]
+impl Predictable for Lenet {
+    async fn predict(&self, windows: Vec<RgbImage>) -> Vec<u32> {
         let (x, num_image): (Vec<f32>, usize) = (
             windows.iter().flat_map(|img| preprocess(&img)).collect(),
             windows.len(),
@@ -29,8 +44,9 @@ impl Predictable for Model<'_> {
             x,
         )
         .unwrap();
+        Vec::new()
 
-        let prediction = self.env.run(|ctx| {
+        /*let prediction = self.env.run(|ctx| {
             let logits = compute_logits(
                 ctx,
                 self.input_width as isize,
@@ -44,9 +60,10 @@ impl Predictable for Model<'_> {
                 .clone()
         });
         prediction.iter().map(|v| *v as u32).collect()
+        */
     }
 
-    fn predict_image(&self, image: RgbImage) -> Vec<u32> {
+    async fn predict_image(&self, image: RgbImage) -> Vec<u32> {
         let (_cols, _rows, windows) = windows(&image, self.input_width as u32);
 
         let (x, num_image): (Vec<f32>, usize) = (
@@ -56,13 +73,64 @@ impl Predictable for Model<'_> {
                 .collect(),
             windows.len(),
         );
-        let as_arr = NdArray::from_shape_vec;
-        let x = as_arr(
-            ndarray::IxDyn(&[num_image, self.input_width * self.input_height * 3]),
+
+        let device = Device::new().unwrap();
+
+        let x = Array4::from_shape_vec(
+            (
+                num_image,
+                self.input_width as usize,
+                self.input_height as usize,
+                3 as usize,
+            ),
             x,
         )
+        .unwrap()
+        .into_shape((
+            num_image,
+            3 as usize,
+            self.input_height as usize,
+            self.input_width as usize,
+        ))
         .unwrap();
+        let x = x
+            .iter()
+            .copied()
+            .collect::<Array1<f32>>()
+            .into_shape([
+                num_image,
+                3 as usize,
+                self.input_height as usize,
+                self.input_width as usize,
+            ])
+            .unwrap();
+        let x = smol::block_on(Tensor::from(x).into_device(device.clone()))
+            .unwrap()
+            // normalize the bytes to f32
+            .scale_into::<f32>(1. / 255.)
+            .unwrap()
+            .into_float();
+        let x = x.into_device(device.clone()).await.unwrap();
+        let prediction = self
+            .net
+            .clone()
+            .into_device(device)
+            .await
+            .unwrap()
+            .infer(&x)
+            .unwrap();
+        let prediction = prediction
+            .as_raw_slice()
+            .into_device(Device::host())
+            .await
+            .unwrap();
+        let prediction = prediction.into_device(Device::host()).await.unwrap();
 
+       
+        println!("{:?}", prediction);
+        //prediction.view()
+
+        /*
         let prediction = self.env.run(|ctx| {
             let logits = compute_logits(
                 ctx,
@@ -76,14 +144,17 @@ impl Predictable for Model<'_> {
                 .unwrap()
                 .clone()
         });
-        prediction.iter().map(|v| *v as u32).collect()
+        */
+        //prediction..iter().map(|v| *v as u32).collect()
+        //vec![prediction.to_slice().unwrap()]
+        todo!()
     }
 
-    fn predict_to_image(&self, image: RgbImage) -> DynamicImage {
+    async fn predict_to_image(&self, image: RgbImage) -> DynamicImage {
         let window_size = self.input_width as u32;
         let cols = 2 * (image.width() / window_size);
         let rows = 2 * (image.height() / window_size);
-        let predictions = self.predict_image(image.clone());
+        let predictions = self.predict_image(image.clone()).await;
         let detections = detect_objects(cols, rows, predictions, window_size);
 
         let mut img_copy = DynamicImage::ImageRgb8(image).to_rgba8();
@@ -197,12 +268,12 @@ mod tests {
         );
         dataset.load(false);
         assert_eq!(dataset.samples(), 18);
-        let mut model = Model::new(28, 28);
+        let mut model = Lenet::new(28, 28);
         model.train(&dataset, 10);
     }
 
-    #[test]
-    fn test_predict() {
+    #[tokio::test]
+    async fn test_predict() {
         let window_size = 28;
         let webcam1 = open("res/webcam01.jpg").unwrap().to_rgb8();
         let loco5 = window_crop(&webcam1, window_size, window_size, (280, 370));
@@ -218,11 +289,19 @@ mod tests {
         );
         dataset.load(true);
         assert_eq!(dataset.samples(), LABELS * IMAGES_PER_LABEL);
-        let mut model = Model::new(28, 28);
+        let mut model = Lenet::new(28, 28);
         model.train(&dataset, 100);
         //assert_eq!(model.predict(images), vec![5, 1, 2]);
-        assert_eq!(model.predict(images.clone()).first().as_ref().unwrap(), &&5);
-        assert_eq!(model.predict(images).last().unwrap(), &2);
+        assert_eq!(
+            model
+                .predict(images.clone())
+                .await
+                .first()
+                .as_ref()
+                .unwrap(),
+            &&5
+        );
+        assert_eq!(model.predict(images).await.last().unwrap(), &2);
     }
 
     #[test]
@@ -236,8 +315,8 @@ mod tests {
         assert_eq!(subimages.len() as u32, (cols - 1) * (rows - 1));
     }
 
-    #[test]
-    fn test_predict_image() {
+    #[tokio::test]
+    async fn test_predict_image() {
         let webcam1 = open("res/webcam01.jpg").unwrap().to_rgb8();
 
         let mut dataset = DataSet::new(
@@ -255,9 +334,9 @@ mod tests {
                 .map(|(l, _)| l.to_string())
                 .collect::<Vec<String>>()
         );
-        let mut model = Model::new(28, 28);
+        let mut model = Lenet::new(28, 28);
         model.train(&dataset, 25);
-        assert!(model.predict_image(webcam1).len() > 0);
+        assert!(model.predict_image(webcam1).await.len() > 0);
     }
 
     #[test]
@@ -270,8 +349,8 @@ mod tests {
         assert_eq!(detections.len(), 1);
     }
 
-    #[test]
-    fn test_predict_to_image() {
+    #[tokio::test]
+    async fn test_predict_to_image() {
         let window_size = 64;
         let webcam1 = open("res/webcam01.jpg").unwrap().to_rgb8();
         let loco5 = window_crop(&webcam1, window_size, window_size, (280, 370));
@@ -281,7 +360,7 @@ mod tests {
         let mut dataset = DataSet::new(
             "res/training/".to_string(),
             "res/labels.txt".to_string(),
-            32,
+            28,
         );
         dataset.load(true);
         dataset.generate_random_annotations(25);
@@ -293,23 +372,27 @@ mod tests {
                 .map(|(l, _)| l.to_string())
                 .collect::<Vec<String>>()
         );
-        let mut model = Model::new(32, 32);
-        model.train(&dataset, 25);
+        let mut model = Lenet::new(28, 28);
+        model.train(&dataset, 25).await.unwrap();
 
         model
             .predict_to_image(webcam1)
+            .await
             .save("out/test_predict_to_image_webcam1.png")
             .unwrap();
         model
             .predict_to_image(loco5)
+            .await
             .save("out/test_predict_to_image_loco5.png")
             .unwrap();
         model
             .predict_to_image(marker1)
+            .await
             .save("out/test_predict_to_image_marker1.png")
             .unwrap();
         model
             .predict_to_image(marker2)
+            .await
             .save("out/test_predict_to_image_marker2.png")
             .unwrap();
     }
