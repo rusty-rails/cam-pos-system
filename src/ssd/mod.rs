@@ -5,6 +5,7 @@ use imageproc::geometric_transformations::{rotate_about_center, warp, Interpolat
 use std::f32;
 
 pub mod dataset;
+pub mod mobilenet;
 pub mod model;
 pub mod predictable;
 pub mod trainable;
