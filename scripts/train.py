@@ -10,12 +10,13 @@ from tensorflow.keras.layers import Layer, Conv2D, MaxPool2D, Dense, Flatten, Dr
 from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras import layers
 from tensorflow.keras import Model
+import tf2onnx
 
 CLASS_NAMES = ['none','marker1','marker2','marker3','loco4','loco5','object6','object7','object8','object9']
 
 img_height = 96 # 224
 img_width = 96 # 224
-batch_size = 30
+batch_size = 64
 epochs = 10
 
 data_dir = '../res/training'
@@ -188,3 +189,8 @@ model_history = model.fit(
         tf.keras.callbacks.ModelCheckpoint(
             filepath=checkpoint_path, verbose=0, save_freq="epoch")
     ])
+
+spec = (tf.TensorSpec((None, img_height, img_width, 3), tf.float32, name="input"),)
+output_path = "../res/markers_n_train_mobilenetv2.onnx"
+
+model_proto, _ = tf2onnx.convert.from_keras(model, input_signature=spec, opset=13, output_path=output_path)
