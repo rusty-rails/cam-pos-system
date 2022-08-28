@@ -9,7 +9,7 @@ pub struct Detection {
     pub confidence: f32,
 }
 
-const NMS_THRESH: f64 = 0.45;
+const NMS_THRESH: f32 = 0.45;
 
 impl Detection {
     pub fn merge(&mut self, other: &Detection) {

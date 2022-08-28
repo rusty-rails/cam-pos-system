@@ -107,10 +107,10 @@ impl Yolo {
                     }
                     if max_prob.1 > threshold {
                         let bbox = BBox {
-                            x: x as f64,
-                            y: y as f64,
-                            w: w as f64,
-                            h: h as f64,
+                            x: x as f32,
+                            y: y as f32,
+                            w: w as f32,
+                            h: h as f32,
                         };
                         detections.push(Detection {
                             class: max_prob.0,

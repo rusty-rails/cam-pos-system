@@ -157,10 +157,10 @@ pub fn detect_objects(
             let class = predictions[i] as usize;
             if class > 0 {
                 // add 0.1 to generate an overlap on contacting windows.
-                let size = 0.01 + window_size as f64;
+                let size = 0.01 + window_size as f32;
                 let bbox = BBox {
-                    x: (x * (window_size / 2)) as f64,
-                    y: (y * (window_size / 2)) as f64,
+                    x: (x * (window_size / 2)) as f32,
+                    y: (y * (window_size / 2)) as f32,
                     w: size,
                     h: size,
                 };
