@@ -229,14 +229,6 @@ async fn train_model<'a>(model: Arc<Mutex<Model<'a>>>) {
     );
     dataset.load(true);
     dataset.generate_random_annotations(25);
-    println!(
-        "{:?}",
-        dataset
-            .data
-            .iter()
-            .map(|(l, _)| l.to_string())
-            .collect::<Vec<String>>()
-    );
     let mut model = model.try_lock().unwrap();
     model.train(&dataset, 225);
 }

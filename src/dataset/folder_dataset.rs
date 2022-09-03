@@ -12,8 +12,8 @@ use std::vec;
 pub struct FolderDataSet {
     path: String,
     pub data: Vec<(String, RgbImage)>,
-    names: Vec<String>,
-    window_size: u32,
+    pub names: Vec<String>,
+    pub window_size: u32,
 }
 
 impl FolderDataSet {

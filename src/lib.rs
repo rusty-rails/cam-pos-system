@@ -1,7 +1,7 @@
 pub mod bbox;
 pub mod coords;
-pub mod detection;
 pub mod dataset;
+pub mod detection;
 pub mod detector;
 pub mod frame;
 pub mod object_detection;

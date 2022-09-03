@@ -247,14 +247,6 @@ mod tests {
         );
         dataset.load(true);
         dataset.generate_random_annotations(100);
-        println!(
-            "{:?}",
-            dataset
-                .data
-                .iter()
-                .map(|(l, _)| l.to_string())
-                .collect::<Vec<String>>()
-        );
         let mut model = Model::new(28, 28);
         model.train(&dataset, 25);
         assert!(model.predict_image(webcam1).len() > 0);
@@ -285,14 +277,6 @@ mod tests {
         );
         dataset.load(true);
         dataset.generate_random_annotations(25);
-        println!(
-            "{:?}",
-            dataset
-                .data
-                .iter()
-                .map(|(l, _)| l.to_string())
-                .collect::<Vec<String>>()
-        );
         let mut model = Model::new(32, 32);
         model.train(&dataset, 25);
 
