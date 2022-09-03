@@ -1,8 +1,13 @@
 // source: https://github.com/raskr/rust-autograd/blob/master/examples/cnn_mnist.rs
+use super::predictable::detect_objects;
+use crate::detection::Detection;
+use crate::detector::Detector;
+use crate::ssd::predictable::Predictable;
 use ag::ndarray_ext as array;
 use ag::optimizers;
 use ag::prelude::*;
 use autograd as ag;
+use image::DynamicImage;
 
 pub struct Model<'a> {
     pub env: ag::VariableEnvironment<'a, f32>,
@@ -39,5 +44,70 @@ impl Model<'_> {
             input_width,
             input_height,
         }
+    }
+}
+
+impl Detector for Model<'_> {
+    fn detect_objects(&self, image: &DynamicImage) -> Vec<Detection> {
+        let image = image.to_rgb8();
+        let window_size = self.input_width as u32;
+        let cols = 2 * (image.width() / window_size);
+        let rows = 2 * (image.height() / window_size);
+        let predictions = self.predict_image(image);
+        detect_objects(cols, rows, predictions, window_size)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::window_crop;
+    use super::*;
+    use crate::ssd::dataset::DataSet;
+    use crate::ssd::trainable::Trainable;
+    use image::open;
+
+    #[ignore = "long train time"]
+    #[test]
+    fn test_detector_via_hard_negative_samples() {
+        let window_size = 64;
+        let webcam1 = open("res/webcam01.jpg").unwrap().to_rgb8();
+        let loco5 = window_crop(&webcam1, window_size, window_size, (280, 370));
+        let marker1 = window_crop(&webcam1, window_size, window_size, (540, 90));
+        let marker2 = window_crop(&webcam1, window_size, window_size, (100, 25));
+
+        let mut dataset = DataSet::new(
+            "res/training/".to_string(),
+            "res/labels.txt".to_string(),
+            32,
+        );
+        dataset.load(true);
+        let mut model = Model::new(32, 32);
+        model.train(&dataset, 300);
+        dataset.dataset.generate_hard_negative_samples(&model, 1);
+        dataset.dataset.generate_hard_negative_samples(&model, 2);
+        dataset.dataset.generate_hard_negative_samples(&model, 3);
+        dataset.dataset.generate_hard_negative_samples(&model, 5);
+        model.train(&dataset, 50);
+        dataset.dataset.generate_hard_negative_samples(&model, 5);
+        model.train(&dataset, 50);
+        dataset.dataset.generate_hard_negative_samples(&model, 5);
+        model.train(&dataset, 1000);
+
+        model
+            .predict_to_image(webcam1)
+            .save("out/test_hard_negative_samples_webcam1.png")
+            .unwrap();
+        model
+            .predict_to_image(loco5)
+            .save("out/test_hard_negative_samples_loco5.png")
+            .unwrap();
+        model
+            .predict_to_image(marker1)
+            .save("out/test_hard_negative_samples_marker1.png")
+            .unwrap();
+        model
+            .predict_to_image(marker2)
+            .save("out/test_hard_negative_samples_marker2.png")
+            .unwrap();
     }
 }

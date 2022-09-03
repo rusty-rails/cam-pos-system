@@ -5,7 +5,7 @@ use ag::ndarray;
 use autograd as ag;
 
 pub struct DataSet {
-    dataset: FolderDataSet,
+    pub dataset: FolderDataSet,
 }
 
 impl DataSet {
