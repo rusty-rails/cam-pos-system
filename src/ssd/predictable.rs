@@ -185,7 +185,7 @@ mod tests {
     use crate::ssd::trainable::Trainable;
     use image::open;
 
-    const LABELS: usize = 18;
+    const ANNOTATIONS: usize = 97;
     const IMAGES_PER_LABEL: usize = 21;
 
     #[test]
@@ -196,7 +196,7 @@ mod tests {
             28,
         );
         dataset.load(false);
-        assert_eq!(dataset.samples(), 18);
+        assert_eq!(dataset.samples(), ANNOTATIONS);
         let mut model = Model::new(28, 28);
         model.train(&dataset, 10);
     }
@@ -217,9 +217,9 @@ mod tests {
             28,
         );
         dataset.load(true);
-        assert_eq!(dataset.samples(), LABELS * IMAGES_PER_LABEL);
+        assert_eq!(dataset.samples(), ANNOTATIONS * IMAGES_PER_LABEL);
         let mut model = Model::new(28, 28);
-        model.train(&dataset, 100);
+        model.train(&dataset, 10);
         //assert_eq!(model.predict(images), vec![5, 1, 2]);
         assert_eq!(model.predict(images.clone()).first().as_ref().unwrap(), &&5);
         assert_eq!(model.predict(images).last().unwrap(), &2);
@@ -248,7 +248,7 @@ mod tests {
         dataset.load(true);
         dataset.generate_random_annotations(100);
         let mut model = Model::new(28, 28);
-        model.train(&dataset, 25);
+        model.train(&dataset, 10);
         assert!(model.predict_image(webcam1).len() > 0);
     }
 
@@ -278,7 +278,7 @@ mod tests {
         dataset.load(true);
         dataset.generate_random_annotations(25);
         let mut model = Model::new(32, 32);
-        model.train(&dataset, 25);
+        model.train(&dataset, 10);
 
         model
             .predict_to_image(webcam1)

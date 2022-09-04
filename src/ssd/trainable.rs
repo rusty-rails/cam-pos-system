@@ -136,7 +136,7 @@ impl Trainable for Model<'_> {
 mod tests {
     use super::*;
 
-    const LABELS: usize = 18;
+    const LABELS: usize = 97;
     const IMAGES_PER_LABEL: usize = 21;
 
     #[test]
@@ -147,7 +147,7 @@ mod tests {
             28,
         );
         dataset.load(false);
-        assert_eq!(dataset.samples(), 18);
+        assert_eq!(dataset.samples(), LABELS);
         let mut model = Model::new(28, 28);
         model.train(&dataset, 10);
     }
@@ -162,7 +162,7 @@ mod tests {
         dataset.load(true);
         assert_eq!(dataset.samples(), LABELS * IMAGES_PER_LABEL);
         let mut model = Model::new(28, 28);
-        model.train(&dataset, 100);
+        model.train(&dataset, 10);
         model.evaluate(&dataset);
     }
 }

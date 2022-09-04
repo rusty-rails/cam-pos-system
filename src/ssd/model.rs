@@ -87,7 +87,7 @@ mod tests {
         assert!(Path::new(filename).exists());
     }
 
-    //#[ignore = "long train time"]
+    #[ignore = "long train time"]
     #[test]
     fn test_detector_via_hard_negative_samples() {
         let model_filename = "out/model.json";

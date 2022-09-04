@@ -1,7 +1,7 @@
 use crate::bbox::BBox;
 use crate::dataset::{rotated_frames, scaled_frames, window_crop, DataSet};
 use crate::Detector;
-use image::{open, RgbImage};
+use image::{imageops::resize, imageops::FilterType::Nearest, open, RgbImage};
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::fs::read_dir;
@@ -53,10 +53,17 @@ impl FolderDataSet {
         label: String,
         x: u32,
         y: u32,
-        window_size: u32,
+        width: u32,
+        height: u32,
+        window_size: Option<u32>,
     ) -> (String, RgbImage) {
         let img = open(image_path).unwrap().to_rgb8();
-        let window = window_crop(&img, window_size, window_size, (x, y));
+        let window = window_crop(&img, x, y, width, height);
+        let window = match window_size {
+            Some(window_size) => resize(&window, window_size, window_size, Nearest),
+            None => window,
+        };
+        assert_eq!(window.width(), window_size.unwrap());
         (label, window)
     }
 
@@ -75,6 +82,14 @@ impl FolderDataSet {
                         let label = l.next().unwrap();
                         let x: u32 = l.next().unwrap().parse().unwrap();
                         let y: u32 = l.next().unwrap().parse().unwrap();
+                        let w: u32 = match l.next() {
+                            Some(w) => w.parse().unwrap(),
+                            None => window_size,
+                        };
+                        let h: u32 = match l.next() {
+                            Some(h) => h.parse().unwrap(),
+                            None => window_size,
+                        };
                         match augment {
                             true => {
                                 let annotation = Self::load_annotation(
@@ -82,8 +97,11 @@ impl FolderDataSet {
                                     label.to_string(),
                                     x,
                                     y,
-                                    window_size,
+                                    w,
+                                    h,
+                                    Some(window_size),
                                 );
+
                                 let frame = annotation.1.clone();
                                 let frames = std::iter::once(&frame)
                                     .cloned()
@@ -99,7 +117,9 @@ impl FolderDataSet {
                                     label.to_string(),
                                     x,
                                     y,
-                                    window_size,
+                                    w,
+                                    h,
+                                    Some(window_size)
                                 ));
                             }
                         };
@@ -161,7 +181,9 @@ impl FolderDataSet {
                         "none".to_string(),
                         detection.bbox.x as u32,
                         detection.bbox.y as u32,
-                        self.window_size,
+                        detection.bbox.w as u32,
+                        detection.bbox.h as u32,
+                        Some(self.window_size)
                     ));
                 }
             });
@@ -184,11 +206,11 @@ impl FolderDataSet {
         let mut rng: ThreadRng = rand::thread_rng();
 
         for _ in 0..count {
-            let x = rng.gen_range(0..=image.width());
-            let y = rng.gen_range(0..=image.height());
+            let x = rng.gen_range(0..=image.width() - window_size);
+            let y = rng.gen_range(0..=image.height() - window_size);
             annotations.push((
                 label.to_string(),
-                window_crop(image, window_size, window_size, (x, y)),
+                window_crop(image, x, y, window_size, window_size),
             ));
         }
         annotations
@@ -263,14 +285,14 @@ impl DataSet for FolderDataSet {
 mod tests {
     use super::*;
 
-    const ANNOTATIONS: usize = 18;
-    const IMAGES_PER_LABEL: usize = 21;
+    const ANNOTATIONS: usize = 97;
+    const AUGMENTATIONS_PER_ANNOTATION: usize = 21;
 
     #[test]
     fn test_list_files() {
         let path = "res/training";
         let file_pathes = FolderDataSet::list_pathes(path);
-        assert_eq!(file_pathes.len(), 3);
+        assert_eq!(file_pathes.len(), 7);
     }
 
     #[test]
@@ -280,7 +302,7 @@ mod tests {
             "res/training/webcam01.jpg".to_string(),
         )];
         let annotations = FolderDataSet::load_annotations(pathes, 28, false);
-        assert_eq!(annotations.len(), 6);
+        assert_eq!(annotations.len(), 14);
     }
 
     #[test]
@@ -319,7 +341,10 @@ mod tests {
             28,
         );
         dataset.load(true);
-        assert_eq!(dataset.samples(), ANNOTATIONS * IMAGES_PER_LABEL);
+        assert_eq!(
+            dataset.samples(),
+            ANNOTATIONS * AUGMENTATIONS_PER_ANNOTATION
+        );
     }
 
     #[test]
@@ -340,9 +365,15 @@ mod tests {
             28,
         );
         dataset.load(true);
-        assert_eq!(dataset.samples(), ANNOTATIONS * IMAGES_PER_LABEL);
+        assert_eq!(
+            dataset.samples(),
+            ANNOTATIONS * AUGMENTATIONS_PER_ANNOTATION
+        );
         dataset.generate_random_annotations(1);
-        assert_eq!(dataset.samples(), ANNOTATIONS * IMAGES_PER_LABEL + 3);
+        assert_eq!(
+            dataset.samples(),
+            ANNOTATIONS * AUGMENTATIONS_PER_ANNOTATION + 7
+        );
     }
 
     #[test]

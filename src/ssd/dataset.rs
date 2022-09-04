@@ -24,6 +24,9 @@ impl DataSet {
 
     pub fn get(&self) -> ((NdArray, NdArray), (NdArray, NdArray)) {
         let (train_x, train_y, test_x, test_y) = self.dataset.get();
+        train_x.iter().for_each(|img| assert_eq!(img.width(), img.height()));
+        let window_size = self.dataset.window_size;
+        train_x.iter().for_each(|img| assert_eq!(img.width(), window_size));
 
         let (train_x, num_image_train): (Vec<f32>, usize) = (
             train_x.iter().flat_map(|img| preprocess(&img)).collect(),
@@ -38,6 +41,7 @@ impl DataSet {
 
         // Vec to ndarray
         let as_arr = NdArray::from_shape_vec;
+        println!("{:?}", num_image_train);
         let x_train = as_arr(
             ndarray::IxDyn(&[
                 num_image_train,
@@ -68,6 +72,8 @@ impl DataSet {
 mod tests {
     use super::*;
 
+    const ANNOTATIONS: usize = 97;
+
     #[test]
     fn test_get() {
         let mut dataset = DataSet::new(
@@ -76,11 +82,11 @@ mod tests {
             28,
         );
         dataset.load(false);
-        assert_eq!(dataset.samples(), 18);
+        assert_eq!(dataset.samples(), ANNOTATIONS);
         let ((train_x, train_y), (test_x, test_y)) = dataset.get();
-        assert_eq!(train_x.shape()[0], 18);
-        assert_eq!(train_y.shape()[0], 18);
-        assert_eq!(test_x.shape()[0], 18);
-        assert_eq!(test_y.shape()[0], 18);
+        assert_eq!(train_x.shape()[0], ANNOTATIONS);
+        assert_eq!(train_y.shape()[0], ANNOTATIONS);
+        assert_eq!(test_x.shape()[0], ANNOTATIONS);
+        assert_eq!(test_y.shape()[0], ANNOTATIONS);
     }
 }

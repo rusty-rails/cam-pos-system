@@ -4,26 +4,8 @@ use imageproc::geometric_transformations::{rotate_about_center, warp, Interpolat
 #[cfg(not(target_arch = "wasm32"))]
 mod folder_dataset;
 
-pub fn window_crop(
-    input_frame: &RgbImage,
-    window_width: u32,
-    window_height: u32,
-    center: (u32, u32),
-) -> RgbImage {
-    imageops::crop(
-        &mut input_frame.clone(),
-        center
-            .0
-            .saturating_sub(window_width / 2)
-            .min(input_frame.width() - window_width),
-        center
-            .1
-            .saturating_sub(window_height / 2)
-            .min(input_frame.height() - window_height),
-        window_width,
-        window_height,
-    )
-    .to_image()
+pub fn window_crop(input_frame: &RgbImage, x: u32, y: u32, width: u32, height: u32) -> RgbImage {
+    imageops::crop(&mut input_frame.clone(), x, y, width, height).to_image()
 }
 
 pub fn rotated_frames(frame: &RgbImage) -> impl Iterator<Item = RgbImage> + '_ {
