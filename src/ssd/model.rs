@@ -45,6 +45,17 @@ impl Model<'_> {
             input_height,
         }
     }
+
+    pub fn save(&self, filename: &str) {
+        self.env.save(filename).unwrap();
+    }
+
+    pub fn load(&mut self, filename: &str) {
+        match ag::VariableEnvironment::<f32>::load(&filename) {
+            Ok(loaded_env) => self.env = loaded_env,
+            Err(e) => println!("{}", e),
+        };
+    }
 }
 
 impl Detector for Model<'_> {
@@ -65,11 +76,22 @@ mod tests {
     use crate::ssd::dataset::DataSet;
     use crate::ssd::trainable::Trainable;
     use image::open;
+    use std::path::Path;
 
-    #[ignore = "long train time"]
+    #[test]
+    fn test_load_and_save() {
+        let filename = "out/model.json";
+        let mut model = Model::new(32, 32);
+        model.load(filename);
+        model.save(filename);
+        assert!(Path::new(filename).exists());
+    }
+
+    //#[ignore = "long train time"]
     #[test]
     fn test_detector_via_hard_negative_samples() {
-        let window_size = 64;
+        let model_filename = "out/model.json";
+        let window_size = 32;
         let webcam1 = open("res/webcam01.jpg").unwrap().to_rgb8();
         let loco5 = window_crop(&webcam1, window_size, window_size, (280, 370));
         let marker1 = window_crop(&webcam1, window_size, window_size, (540, 90));
@@ -82,7 +104,8 @@ mod tests {
         );
         dataset.load(true);
         let mut model = Model::new(32, 32);
-        model.train(&dataset, 300);
+        model.load(model_filename);
+        model.train(&dataset, 100);
         dataset.dataset.generate_hard_negative_samples(&model, 1);
         dataset.dataset.generate_hard_negative_samples(&model, 2);
         dataset.dataset.generate_hard_negative_samples(&model, 3);
@@ -91,7 +114,8 @@ mod tests {
         dataset.dataset.generate_hard_negative_samples(&model, 5);
         model.train(&dataset, 50);
         dataset.dataset.generate_hard_negative_samples(&model, 5);
-        model.train(&dataset, 1000);
+        model.train(&dataset, 100);
+        model.save(model_filename);
 
         model
             .predict_to_image(webcam1)
