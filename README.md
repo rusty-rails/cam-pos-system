@@ -1,5 +1,7 @@
 # cam-pos-system
 
+![moving train](res/red_train.gif)
+
 ## run wasm
 
 ```sh
