@@ -1,6 +1,6 @@
 # cam-pos-system
 
-![](res/red_train.gif)
+![moving train](res/red_train.gif)
 
 ## run wasm
 
