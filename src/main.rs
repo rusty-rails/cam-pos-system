@@ -1,14 +1,13 @@
 use cam_pos_system::coords::Coords;
 use cam_pos_system::frame::Frame;
-use cam_pos_system::object_detection;
 use cam_pos_system::ssd::yolo::Yolo;
 use cam_pos_system::ssd::{
     dataset::DataSet, model::Model, predictable::Predictable, trainable::Trainable,
 };
 use cam_pos_system::stream::MJpeg;
 use cam_pos_system::tracker::Tracker;
-use cam_pos_system::video_stream::webcam_stream::WebcamStream;
-use cam_pos_system::video_stream::VideoStream;
+use cam_pos_system::video_stream::{VideoSource, VideoStream};
+use cam_pos_system::{config, object_detection};
 use image::{DynamicImage, RgbImage};
 use nalgebra::Point2;
 use rocket::fs::FileServer;
@@ -236,16 +235,18 @@ async fn train_model<'a>(model: Arc<Mutex<Model<'a>>>) {
 async fn main() {
     let frame = Arc::new(Mutex::new(Frame::default()));
 
-    let mut webcam = WebcamStream::new(0).unwrap();
+    let config = config::load_config();
+
+    let mut video_stream = VideoSource::new(config.video_source).unwrap();
     {
-        let image = webcam.frame().unwrap();
+        let image = video_stream.frame().unwrap();
         let mut frame = frame.lock().unwrap();
         *frame = Frame::new(image);
     };
 
-    let webcam: Arc<Mutex<Box<dyn VideoStream>>> = Arc::new(Mutex::new(Box::new(webcam)));
+    let video_stream: Arc<Mutex<Box<dyn VideoStream>>> = Arc::new(Mutex::new(video_stream));
 
-    let fetch_frame_thread = tokio::spawn(fetch_frame(frame.clone(), webcam.clone()));
+    let fetch_frame_thread = tokio::spawn(fetch_frame(frame.clone(), video_stream.clone()));
 
     let (width, height) = {
         let frame = frame.lock().unwrap();
@@ -318,7 +319,7 @@ async fn main() {
                 options_update_position
             ],
         )
-        .manage(webcam)
+        .manage(video_stream)
         .manage(frame)
         .manage(tracker)
         .manage(coords)

@@ -5,8 +5,9 @@ signals = ["term", "hup"]
 [default.objects]
 train5 = { id = 5, path = "object1/" }
 
-[default.videosource]
-webcam = 0
+[default.video_source]
+gif = "res/red_train.gif"
+#webcam = 0
 
 [release]
 port = 8000

@@ -32,6 +32,7 @@ impl VideoStream for WebcamStream {
 mod tests {
     use super::*;
 
+    #[ignore = "needs webcam"]
     #[test]
     fn test_webcam_stream() -> Result<(), Box<dyn Error>> {
         let index = 0;

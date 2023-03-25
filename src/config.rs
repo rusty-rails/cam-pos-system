@@ -27,7 +27,7 @@ mod tests {
     fn setup_rocket_toml() -> String {
         let content = r#"
             [default]
-            video_source = { Webcam = 0 }
+            video_source = { webcam = 0 }
         "#;
 
         let rocket_toml = std::env::temp_dir().join("Rocket.toml");
@@ -52,7 +52,6 @@ mod tests {
             _ => panic!("Expected video_source to be a Webcam variant"),
         }
 
-        // Clean up
         std::fs::remove_file(rocket_toml_path).expect("Unable to delete Rocket.toml file");
     }
 }
