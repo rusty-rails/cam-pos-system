@@ -1,0 +1,21 @@
+@startuml CamPosSystem
+
+start
+
+:Initialize CamPosSystem;
+
+repeat
+:Read next frame from video stream;
+:Convert frame to grayscale;
+:Detect objects using HOG detector;
+:Initialize MosseTracker with detected objects;
+:Update MosseTracker;
+:Estimate position of object in coordinate system;
+:Add object to result list;
+repeat while (video stream has next frame)
+
+:Return list of detected objects;
+
+stop
+
+@enduml

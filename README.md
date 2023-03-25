@@ -4,6 +4,8 @@ cam-pos-system is a Rust library with an example app that reads a video stream a
 
 ![moving train](res/red_train.gif)
 
+![Activity](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.github.com/rusty-rails/cam-pos-system/main/docs/activity.puml)
+
 ## Algorithms
 
 The cam-pos-system library uses the following computer vision algorithms for object detection:
