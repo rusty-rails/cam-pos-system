@@ -17,5 +17,7 @@
   ],
   "module": "cam_pos_system.js",
   "types": "cam_pos_system.d.ts",
-  "sideEffects": false
+  "sideEffects": [
+    "./snippets/*"
+  ]
 }
