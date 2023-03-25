@@ -1,6 +1,16 @@
 # cam-pos-system
 
+cam-pos-system is a Rust library with an example app that reads a video stream and detects moving objects within a coordinate system using computer vision algorithms.
+
 ![moving train](res/red_train.gif)
+
+## Algorithms
+
+The cam-pos-system library uses the following computer vision algorithms for object detection:
+
+* HOG detector: This algorithm detects the presence of objects in an image by looking for their Histogram of Oriented Gradients (HOG) features.
+* MosseTracker: This algorithm tracks a moving object in a video stream using adaptive correlation filters to estimate the object's position and scale.
+The library combines these algorithms to detect moving objects in a video stream and estimate their positions within a coordinate system.
 
 ## run wasm
 

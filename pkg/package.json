@@ -3,7 +3,7 @@
   "collaborators": [
     "Christian <chriamue@gmail.com>"
   ],
-  "description": "Capture birds in your garden, running on raspberry pi.",
+  "description": "A Rust library with an example app that reads a video stream and detects moving objects within a coordinate system.",
   "version": "0.1.0",
   "license": "MIT",
   "repository": {
