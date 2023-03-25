@@ -1,9 +1,9 @@
 //! An example of template matching in a greyscale image.
 
-use image::{open, GenericImage, GrayImage, DynamicImage, Luma, RgbImage};
+use image::{open, DynamicImage, GenericImage, GrayImage, Luma, RgbImage};
 use imageproc::definitions::Image;
 use imageproc::map::map_colors;
-use imageproc::template_matching::{match_template, MatchTemplateMethod};
+use imageproc::template_matching::{find_extremes, match_template, MatchTemplateMethod};
 use std::env;
 use std::f32;
 use std::fs;
@@ -71,6 +71,8 @@ fn run_match_template(
 ) -> RgbImage {
     // Match the template and convert to u8 depth to display
     let result = match_template(&image, &template, method);
+    println!("extremes {:?}", find_extremes(&result));
+
     let result_scaled = convert_to_gray_image(&result);
 
     // Pad the result to the same size as the input image, to make them easier to compare
@@ -79,7 +81,6 @@ fn run_match_template(
         .copy_from(&result_scaled, args.template_w / 2, args.template_h / 2)
         .unwrap();
     DynamicImage::ImageLuma8(result_padded).to_rgb8()
-    
 }
 
 fn main() {
@@ -119,6 +120,15 @@ fn main() {
         &image,
         &template,
         MatchTemplateMethod::SumOfSquaredErrorsNormalized,
+    );
+
+    println!(
+        "extremes sse {:?}",
+        find_extremes(&DynamicImage::ImageRgb8(sse.clone()).to_luma8())
+    );
+    println!(
+        "extremes sse norm {:?}",
+        find_extremes(&DynamicImage::ImageRgb8(sse_norm.clone()).to_luma8())
     );
 
     // Save images to output_dir

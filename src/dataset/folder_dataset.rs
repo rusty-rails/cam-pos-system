@@ -119,7 +119,7 @@ impl FolderDataSet {
                                     y,
                                     w,
                                     h,
-                                    Some(window_size)
+                                    Some(window_size),
                                 ));
                             }
                         };
@@ -183,7 +183,7 @@ impl FolderDataSet {
                         detection.bbox.y as u32,
                         detection.bbox.w as u32,
                         detection.bbox.h as u32,
-                        Some(self.window_size)
+                        Some(self.window_size),
                     ));
                 }
             });
@@ -232,8 +232,13 @@ impl FolderDataSet {
             .iter()
             .enumerate()
             .for_each(|(index, (label, img))| {
-                img.save(format!("{}/{}_{}.jpg", folder, label, index))
-                    .unwrap();
+                match img.save(format!("{}/{}_{}.jpg", folder, label, index)) {
+                    Ok(_) => (),
+                    Err(err) => panic!(
+                        "Error saving image {}/{}_{}.jpg: {}",
+                        folder, label, index, err
+                    ),
+                }
             });
     }
 }

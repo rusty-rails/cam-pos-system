@@ -24,9 +24,13 @@ impl DataSet {
 
     pub fn get(&self) -> ((NdArray, NdArray), (NdArray, NdArray)) {
         let (train_x, train_y, test_x, test_y) = self.dataset.get();
-        train_x.iter().for_each(|img| assert_eq!(img.width(), img.height()));
+        train_x
+            .iter()
+            .for_each(|img| assert_eq!(img.width(), img.height()));
         let window_size = self.dataset.window_size;
-        train_x.iter().for_each(|img| assert_eq!(img.width(), window_size));
+        train_x
+            .iter()
+            .for_each(|img| assert_eq!(img.width(), window_size));
 
         let (train_x, num_image_train): (Vec<f32>, usize) = (
             train_x.iter().flat_map(|img| preprocess(&img)).collect(),
