@@ -5,6 +5,9 @@ signals = ["term", "hup"]
 [default.objects]
 train5 = { id = 5, path = "object1/" }
 
+[default.videosource]
+webcam = 0
+
 [release]
 port = 8000
 address = "0.0.0.0"

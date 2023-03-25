@@ -1,4 +1,5 @@
 pub mod bbox;
+pub mod config;
 pub mod coords;
 pub mod dataset;
 pub mod detection;
@@ -10,6 +11,7 @@ pub mod object_finder;
 pub mod ssd;
 pub mod stream;
 pub mod tracker;
+pub mod video_stream;
 
 #[cfg(target_arch = "wasm32")]
 pub mod wasm;

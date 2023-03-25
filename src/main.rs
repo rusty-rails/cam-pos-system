@@ -7,9 +7,10 @@ use cam_pos_system::ssd::{
 };
 use cam_pos_system::stream::MJpeg;
 use cam_pos_system::tracker::Tracker;
-use image::{DynamicImage, ImageBuffer, Rgb, RgbImage};
+use cam_pos_system::video_stream::webcam_stream::WebcamStream;
+use cam_pos_system::video_stream::VideoStream;
+use image::{DynamicImage, RgbImage};
 use nalgebra::Point2;
-use nokhwa::ThreadedCamera;
 use rocket::fs::FileServer;
 use rocket::http::{ContentType, Status};
 use rocket::response::stream::ByteStream;
@@ -20,8 +21,6 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-
-fn callback(_image: ImageBuffer<Rgb<u8>, Vec<u8>>) {}
 
 #[get("/frame")]
 fn frame(frame: &'_ State<Arc<Mutex<Frame>>>) -> (Status, (ContentType, Vec<u8>)) {
@@ -196,10 +195,10 @@ fn post_update_position(
 #[options("/update-position")]
 fn options_update_position() {}
 
-async fn fetch_frame(frame: Arc<Mutex<Frame>>, webcam: Arc<Mutex<ThreadedCamera>>) {
+async fn fetch_frame(frame: Arc<Mutex<Frame>>, video_stream: Arc<Mutex<Box<dyn VideoStream>>>) {
     loop {
         {
-            let image = webcam.lock().unwrap().last_frame();
+            let image = video_stream.lock().unwrap().frame().unwrap();
             let mut frame = frame.lock().unwrap();
             let mut f = Frame::new(image);
             f.tracked = frame.tracked.clone();
@@ -237,16 +236,14 @@ async fn train_model<'a>(model: Arc<Mutex<Model<'a>>>) {
 async fn main() {
     let frame = Arc::new(Mutex::new(Frame::default()));
 
-    let mut webcam = ThreadedCamera::new(0, None).unwrap();
-    webcam.open_stream(callback).unwrap();
-
+    let mut webcam = WebcamStream::new(0).unwrap();
     {
-        let image = webcam.poll_frame().unwrap();
+        let image = webcam.frame().unwrap();
         let mut frame = frame.lock().unwrap();
         *frame = Frame::new(image);
     };
 
-    let webcam = Arc::new(Mutex::new(webcam));
+    let webcam: Arc<Mutex<Box<dyn VideoStream>>> = Arc::new(Mutex::new(Box::new(webcam)));
 
     let fetch_frame_thread = tokio::spawn(fetch_frame(frame.clone(), webcam.clone()));
 
