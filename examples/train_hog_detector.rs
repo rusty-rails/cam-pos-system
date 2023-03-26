@@ -21,7 +21,7 @@ fn main() {
     let mut dataset = FolderDataSet::new(data_path.to_str().unwrap(), width, height, label_names);
 
     dataset.load().unwrap();
-    
+
     let (x, y) = dataset.get_data();
     let x = x
         .into_iter()

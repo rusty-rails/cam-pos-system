@@ -8,8 +8,6 @@ pub mod detector;
 pub mod frame;
 pub mod object_detection;
 pub mod object_finder;
-#[cfg(feature = "server")]
-pub mod ssd;
 pub mod stream;
 pub mod tracker;
 #[cfg(all(not(target_arch = "wasm32"), feature = "server"))]

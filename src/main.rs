@@ -1,15 +1,17 @@
 use cam_pos_system::coords::Coords;
 use cam_pos_system::frame::Frame;
-use cam_pos_system::ssd::yolo::Yolo;
-use cam_pos_system::ssd::{
-    dataset::DataSet, model::Model, predictable::Predictable, trainable::Trainable,
-};
 use cam_pos_system::stream::MJpeg;
 use cam_pos_system::tracker::Tracker;
 use cam_pos_system::video_stream::{VideoSource, VideoStream};
 use cam_pos_system::{config, object_detection};
+use hog_detector::classifier::BayesClassifier;
+use hog_detector::hogdetector::HogDetectorTrait;
+use hog_detector::{DataSet, HogDetector};
+use image::imageops::FilterType;
 use image::{DynamicImage, RgbImage};
 use nalgebra::Point2;
+use object_detector_rust::dataset::FolderDataSet;
+use object_detector_rust::window_generator::PyramidWindow;
 use rocket::fs::FileServer;
 use rocket::http::{ContentType, Status};
 use rocket::response::stream::ByteStream;
@@ -20,6 +22,8 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+
+type Model = HogDetector<f32, usize, BayesClassifier<f32, usize>, PyramidWindow>;
 
 #[get("/frame")]
 fn frame(frame: &'_ State<Arc<Mutex<Frame>>>) -> (Status, (ContentType, Vec<u8>)) {
@@ -86,32 +90,6 @@ fn tracked_stream(
     )
 }
 
-#[get("/yolo")]
-fn yolo(
-    frame: &'_ State<Arc<Mutex<Frame>>>,
-    yolo: &'_ State<Arc<Mutex<Yolo>>>,
-) -> (Status, (ContentType, Vec<u8>)) {
-    let frame = {
-        let base_img: DynamicImage = {
-            let img = frame.lock().unwrap();
-            DynamicImage::ImageRgb8(img.raw.clone())
-        };
-        let image = {
-            let yolo = yolo.lock().unwrap();
-            yolo.run(&base_img)
-        };
-        let mut buf = vec![];
-        image
-            .write_to(
-                &mut std::io::Cursor::new(&mut buf),
-                image::ImageOutputFormat::Jpeg(70),
-            )
-            .unwrap();
-        buf
-    };
-    (Status::Ok, (ContentType::JPEG, frame))
-}
-
 #[get("/ssd")]
 fn ssd(
     frame: &'_ State<Arc<Mutex<Frame>>>,
@@ -124,7 +102,7 @@ fn ssd(
         };
         let image = {
             let model = model.lock().unwrap();
-            model.predict_to_image(base_img)
+            model.visualize_detections(&DynamicImage::ImageRgb8(base_img))
         };
         let mut buf = vec![];
         image
@@ -218,7 +196,7 @@ async fn fetch_frame(frame: Arc<Mutex<Frame>>, video_stream: Arc<Mutex<Box<dyn V
             f.tracked = frame.tracked.clone();
             *frame = f;
         };
-        thread::sleep(Duration::from_millis(40));
+        thread::sleep(Duration::from_millis(20));
     }
 }
 
@@ -234,16 +212,22 @@ async fn run_tracker(tracker: Arc<Mutex<Tracker>>, frame: Arc<Mutex<Frame>>) {
     }
 }
 
-async fn train_model<'a>(model: Arc<Mutex<Model<'a>>>) {
-    let mut dataset = DataSet::new(
-        "res/training/".to_string(),
-        "res/labels.txt".to_string(),
-        32,
-    );
-    dataset.load(true);
-    dataset.generate_random_annotations(25);
-    let mut model = model.try_lock().unwrap();
-    model.train(&dataset, 225);
+async fn train_model<'a>(model: Arc<Mutex<Model>>) {
+    let (width, height) = (32, 32);
+    let data_path = std::fs::canonicalize("res/training/").unwrap();
+    let labels_path = std::fs::canonicalize("res/labels.txt").unwrap();
+    let label_names = FolderDataSet::load_label_names(labels_path.to_str().unwrap());
+    let mut dataset = FolderDataSet::new(data_path.to_str().unwrap(), width, height, label_names);
+
+    dataset.load().unwrap();
+
+    let (x, y) = dataset.get_data();
+    let x = x
+        .into_iter()
+        .map(|x| x.resize_exact(width, height, FilterType::Gaussian))
+        .collect::<Vec<_>>();
+    let y = y.into_iter().map(|y| y as usize).collect::<Vec<_>>();
+    model.lock().unwrap().fit_class(&x, &y, 5).unwrap();
 }
 
 #[tokio::main]
@@ -312,9 +296,7 @@ async fn main() {
         Point2::new(0.0, h),
     )));
 
-    let yolo = Arc::new(Mutex::new(Yolo::default()));
-
-    let model = Arc::new(Mutex::new(Model::new(32, 32)));
+    let model = Arc::new(Mutex::new(HogDetector::default()));
 
     let model_thread = tokio::spawn(train_model(model.clone()));
 
@@ -325,7 +307,6 @@ async fn main() {
             routes![
                 frame,
                 luma,
-                yolo,
                 ssd,
                 tracked,
                 tracked_stream,
@@ -338,7 +319,6 @@ async fn main() {
         .manage(frame)
         .manage(tracker)
         .manage(coords)
-        .manage(yolo)
         .manage(model);
     let _server = launcher.launch().await.unwrap();
     fetch_frame_thread.abort();

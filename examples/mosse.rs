@@ -43,7 +43,7 @@ fn main() {
     let first_img = first.to_luma8();
     for (i, coords) in target_coords.into_iter().enumerate() {
         let start = Instant::now();
-        multi_tracker.add_target(i as u32, coords, &first_img);
+        multi_tracker.add_or_replace_target(i as u32, coords, &first_img);
         println!(
             "Added object on initial frame to multi-tracker in {} ms",
             start.elapsed().as_millis()
@@ -99,8 +99,8 @@ fn main() {
             draw_text_mut(
                 &mut img_copy,
                 Rgba([125u8, 255u8, 0u8, 0u8]),
-                pred.location.0 - (window_size / 2),
-                pred.location.1 - (window_size / 2),
+                (pred.location.0 - (window_size / 2)) as i32,
+                (pred.location.1 - (window_size / 2)) as i32,
                 Scale::uniform(FONT_SCALE),
                 &font,
                 &format!("#{}", obj_id),
@@ -110,8 +110,8 @@ fn main() {
             draw_text_mut(
                 &mut img_copy,
                 color,
-                pred.location.0 - (window_size / 2),
-                pred.location.1 - (window_size / 2) + FONT_SCALE as u32,
+                (pred.location.0 - (window_size / 2)) as i32,
+                (pred.location.1 - (window_size / 2) + FONT_SCALE as u32) as i32,
                 Scale::uniform(FONT_SCALE),
                 &font,
                 &format!("PSR: {:.2}", pred.psr),

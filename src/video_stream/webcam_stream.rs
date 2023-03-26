@@ -1,5 +1,6 @@
 use image::ImageBuffer;
 use image::Rgb;
+use nokhwa::utils::CameraIndex;
 use nokhwa::{
     nokhwa_initialize,
     pixel_format::RgbFormat,
@@ -18,13 +19,13 @@ pub struct WebcamStream {
 impl WebcamStream {
     pub fn new(index: usize) -> Result<WebcamStream, Box<dyn Error>> {
         nokhwa_initialize(|granted| {
-            println!("User said {}", granted);
+            println!("Camera access granted {}", granted);
         });
         let cameras = query(ApiBackend::Auto).unwrap();
         cameras.iter().for_each(|cam| println!("{:?}", cam));
-        let format =
-            RequestedFormat::new::<RgbFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
-        let cam = CallbackCamera::new(cameras.get(index).unwrap().index().clone(), format, |_| {})?;
+        let index = CameraIndex::Index(index as u32);
+        let format = RequestedFormat::new::<RgbFormat>(RequestedFormatType::None);
+        let cam = CallbackCamera::new(index, format, |_| {})?;
 
         let mut stream = WebcamStream { cam: cam };
         stream.cam.open_stream()?;
@@ -43,7 +44,7 @@ impl VideoStream for WebcamStream {
 mod tests {
     use super::*;
 
-    #[ignore = "needs webcam"]
+    //#[ignore = "needs webcam"]
     #[test]
     fn test_webcam_stream() -> Result<(), Box<dyn Error>> {
         let index = 0;
