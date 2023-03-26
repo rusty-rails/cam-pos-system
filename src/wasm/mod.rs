@@ -23,7 +23,9 @@ impl TrackerJS {
     #[wasm_bindgen]
     pub fn set_target(&mut self, x: u32, y: u32, img_data: &[u8]) {
         let img = image::load_from_memory_with_format(img_data, image::ImageFormat::Png).unwrap();
-        self.tracker.tracker.add_target(1, (x, y), &img.to_luma8());
+        self.tracker
+            .tracker
+            .add_or_replace_target(1, (x, y), &img.to_luma8());
     }
 
     #[wasm_bindgen]

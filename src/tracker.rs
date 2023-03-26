@@ -34,12 +34,12 @@ impl Tracker {
 
     pub fn add_targets(&mut self, targets: Vec<(u32, u32)>, image: ImageBuffer<Luma<u8>, Vec<u8>>) {
         for (i, coords) in targets.into_iter().enumerate() {
-            self.tracker.add_target(i as u32, coords, &image);
+            self.tracker.add_or_replace_target(i as u32, coords, &image);
         }
     }
 
     pub fn next(&mut self, image: &ImageBuffer<Luma<u8>, Vec<u8>>) -> DynamicImage {
-        let predictions = self.tracker.track(&image);
+        let predictions = self.tracker.track(image);
         let mut img_copy = DynamicImage::ImageLuma8(image.clone()).to_rgba8();
         for (obj_id, pred) in predictions.iter() {
             let mut color = Rgba([125u8, 255u8, 0u8, 0u8]);
@@ -71,8 +71,8 @@ impl Tracker {
             draw_text_mut(
                 &mut img_copy,
                 Rgba([125u8, 255u8, 0u8, 0u8]),
-                pred.location.0 - (window_size / 2),
-                pred.location.1 - (window_size / 2),
+                (pred.location.0 - (window_size / 2)) as i32,
+                (pred.location.1 - (window_size / 2)) as i32,
                 Scale::uniform(FONT_SCALE),
                 &font,
                 &format!("#{}", obj_id),
@@ -81,8 +81,8 @@ impl Tracker {
             draw_text_mut(
                 &mut img_copy,
                 color,
-                pred.location.0 - (window_size / 2),
-                pred.location.1 - (window_size / 2) + FONT_SCALE as u32,
+                (pred.location.0 - (window_size / 2)) as i32,
+                (pred.location.1 - (window_size / 2) + FONT_SCALE as u32) as i32,
                 Scale::uniform(FONT_SCALE),
                 &font,
                 &format!("PSR: {:.2}", pred.psr),

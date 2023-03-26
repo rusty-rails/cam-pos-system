@@ -23,19 +23,21 @@ figment = "0.10.8"
 format-bytes = "0.1"
 futures = "0.3.21"
 gif = "0.12.0"
-image = { version = "0.23.1", default-features = false, features = [
+hog-detector = { version = "0.4.0", git="https://github.com/chriamue/hog-detector" }
+image = { version = "0.24.1", default-features = false, features = [
     "png",
     "jpeg"
 ] }
-imageproc = { version = "0.22.0", default-features = false }
+imageproc = { version = "0.23.0", default-features = false }
 mosse = { git = "https://github.com/chriamue/mosse-tracker", branch = "dev", default-features = false }
 nalgebra = "0.31.0"
 ndarray = { version = "0.15.3" }
-nokhwa = { version = "0.9.4", features = [
+nokhwa = { version = "0.10.3", features = [
     "input-v4l",
     "output-threaded",
 ], optional = true }
 num = "0.4.0"
+object-detector-rust = { version = "0.1.2", git="https://github.com/chriamue/object-detector-rust" }
 rand = "0.8.5"
 rayon = { version = "1.5.3", optional = true }
 rocket = { version = "0.5.0-rc.2", features = ["json"], optional = true }
@@ -44,7 +46,7 @@ rustfft = "6.0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.20", features = ["full"], optional = true }
-tract-onnx = { version = "=0.17.0" }
+tract-onnx = { version = "=0.19.7" }
 
 [dev-dependencies]
 approx = { version = "0.5", default-features = false }

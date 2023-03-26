@@ -1,6 +1,6 @@
 use crate::bbox::BBox;
 use crate::detection::{nms_sort, Detection};
-use image::{DynamicImage, GenericImageView, Rgba};
+use image::{DynamicImage, Rgba};
 use imageproc::drawing::{draw_hollow_rect_mut, draw_text_mut};
 use imageproc::rect::Rect;
 use rusttype::{Font, Scale};
@@ -31,11 +31,6 @@ impl Yolo {
         let mut cursor = Cursor::new(data);
         let model = tract_onnx::onnx()
             .model_for_read(&mut cursor)
-            .unwrap()
-            .with_input_fact(
-                0,
-                InferenceFact::dt_shape(f32::datum_type(), tvec!(1, 3, SIZE, SIZE)),
-            )
             .unwrap()
             .into_optimized()
             .unwrap()
@@ -70,7 +65,7 @@ impl Yolo {
                 resized[(x as _, y as _)][c] as f32
             })
             .into();
-        let result = self.model.run(tvec!(tensor)).unwrap();
+        let result = self.model.run(tvec!(tensor.into())).unwrap();
         let result: tract_ndarray::ArrayView4<f32> =
             result[0].to_array_view::<f32>()?.into_dimensionality()?;
         let result = result.index_axis(Axis(0), 0);
@@ -142,8 +137,8 @@ impl Yolo {
             draw_text_mut(
                 &mut img_copy,
                 Rgba([125u8, 255u8, 0u8, 0u8]),
-                r.left() as u32,
-                r.top() as u32,
+                r.left(),
+                r.top(),
                 Scale::uniform(FONT_SCALE),
                 &font,
                 &format!("#{}", label),

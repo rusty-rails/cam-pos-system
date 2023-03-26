@@ -37,7 +37,9 @@ impl WebCam {
         match frame.as_ref() {
             Some(img) => {
                 let mut tracker = self.tracker.lock().unwrap();
-                tracker.tracker.add_target(1, (x, y), &img.to_luma8())
+                tracker
+                    .tracker
+                    .add_or_replace_target(1, (x, y), &img.to_luma8())
             }
             None => (),
         }

@@ -49,7 +49,7 @@ impl VideoStream for GifStream {
                 let mut canvas =
                     image::ImageBuffer::<Rgb<u8>, Vec<u8>>::new(canvas_width, canvas_height);
 
-                image::imageops::overlay(&mut canvas, &image, left, top);
+                image::imageops::overlay(&mut canvas, &image, left as i64, top as i64);
 
                 Ok(canvas)
             }

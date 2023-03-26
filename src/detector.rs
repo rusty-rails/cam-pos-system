@@ -49,8 +49,8 @@ pub fn visualize_detections(detector: &dyn Detector, image: &DynamicImage) -> Dy
         draw_text_mut(
             &mut img_copy,
             Rgba([125u8, 255u8, 0u8, 0u8]),
-            detection.bbox.x as u32,
-            detection.bbox.y as u32,
+            detection.bbox.x as i32,
+            detection.bbox.y as i32,
             Scale::uniform(FONT_SCALE),
             &font,
             &format!("{}", detection.class),

@@ -1,30 +1,41 @@
 use image::ImageBuffer;
 use image::Rgb;
-use nokhwa::ThreadedCamera;
+use nokhwa::{
+    nokhwa_initialize,
+    pixel_format::RgbFormat,
+    query,
+    utils::{ApiBackend, RequestedFormat, RequestedFormatType},
+    CallbackCamera,
+};
 use std::error::Error;
 
 use super::VideoStream;
 
 pub struct WebcamStream {
-    cam: ThreadedCamera,
+    cam: CallbackCamera,
 }
 
 impl WebcamStream {
     pub fn new(index: usize) -> Result<WebcamStream, Box<dyn Error>> {
-        let cam = ThreadedCamera::new(index, None).unwrap();
+        nokhwa_initialize(|granted| {
+            println!("User said {}", granted);
+        });
+        let cameras = query(ApiBackend::Auto).unwrap();
+        cameras.iter().for_each(|cam| println!("{:?}", cam));
+        let format =
+            RequestedFormat::new::<RgbFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
+        let cam = CallbackCamera::new(cameras.get(index).unwrap().index().clone(), format, |_| {})?;
 
         let mut stream = WebcamStream { cam: cam };
-        stream.cam.open_stream(Self::callback)?;
+        stream.cam.open_stream()?;
         Ok(stream)
     }
-
-    fn callback(_image: ImageBuffer<Rgb<u8>, Vec<u8>>) {}
 }
 
 impl VideoStream for WebcamStream {
     fn frame(&mut self) -> Result<ImageBuffer<Rgb<u8>, Vec<u8>>, Box<dyn Error>> {
         let frame = self.cam.poll_frame()?;
-        Ok(frame)
+        Ok(frame.decode_image::<RgbFormat>().unwrap())
     }
 }
 

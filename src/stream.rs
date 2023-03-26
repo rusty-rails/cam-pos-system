@@ -33,7 +33,10 @@ impl Stream for MJpeg {
             let base_img: DynamicImage = DynamicImage::ImageRgb8(base_img);
             let mut buf = vec![];
             base_img
-                .write_to(&mut buf, image::ImageOutputFormat::Jpeg(70))
+                .write_to(
+                    &mut std::io::Cursor::new(&mut buf),
+                    image::ImageOutputFormat::Jpeg(70),
+                )
                 .unwrap();
             buf
         };

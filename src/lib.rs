@@ -1,5 +1,5 @@
 pub mod bbox;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "server"))]
 pub mod config;
 pub mod coords;
 pub mod dataset;
@@ -12,7 +12,7 @@ pub mod object_finder;
 pub mod ssd;
 pub mod stream;
 pub mod tracker;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "server"))]
 pub mod video_stream;
 
 #[cfg(target_arch = "wasm32")]

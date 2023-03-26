@@ -28,7 +28,10 @@ fn frame(frame: &'_ State<Arc<Mutex<Frame>>>) -> (Status, (ContentType, Vec<u8>)
         let base_img: DynamicImage = DynamicImage::ImageRgb8(img.raw.clone());
         let mut buf = vec![];
         base_img
-            .write_to(&mut buf, image::ImageOutputFormat::Jpeg(70))
+            .write_to(
+                &mut std::io::Cursor::new(&mut buf),
+                image::ImageOutputFormat::Jpeg(70),
+            )
             .unwrap();
         buf
     };
@@ -42,7 +45,10 @@ fn luma(frame: &'_ State<Arc<Mutex<Frame>>>) -> (Status, (ContentType, Vec<u8>))
         let base_img: DynamicImage = DynamicImage::ImageLuma8(img.luma.clone());
         let mut buf = vec![];
         base_img
-            .write_to(&mut buf, image::ImageOutputFormat::Jpeg(70))
+            .write_to(
+                &mut std::io::Cursor::new(&mut buf),
+                image::ImageOutputFormat::Jpeg(70),
+            )
             .unwrap();
         buf
     };
@@ -56,7 +62,10 @@ fn tracked(frame: &'_ State<Arc<Mutex<Frame>>>) -> (Status, (ContentType, Vec<u8
         let base_img: DynamicImage = DynamicImage::ImageRgb8(img.tracked.clone());
         let mut buf = vec![];
         base_img
-            .write_to(&mut buf, image::ImageOutputFormat::Jpeg(70))
+            .write_to(
+                &mut std::io::Cursor::new(&mut buf),
+                image::ImageOutputFormat::Jpeg(70),
+            )
             .unwrap();
         buf
     };
@@ -93,7 +102,10 @@ fn yolo(
         };
         let mut buf = vec![];
         image
-            .write_to(&mut buf, image::ImageOutputFormat::Jpeg(70))
+            .write_to(
+                &mut std::io::Cursor::new(&mut buf),
+                image::ImageOutputFormat::Jpeg(70),
+            )
             .unwrap();
         buf
     };
@@ -116,7 +128,10 @@ fn ssd(
         };
         let mut buf = vec![];
         image
-            .write_to(&mut buf, image::ImageOutputFormat::Jpeg(70))
+            .write_to(
+                &mut std::io::Cursor::new(&mut buf),
+                image::ImageOutputFormat::Jpeg(70),
+            )
             .unwrap();
         buf
     };
@@ -181,7 +196,7 @@ fn post_update_position(
     let mut tracker = tracker.lock().unwrap();
     tracker
         .tracker
-        .add_target(data.id, (data.x, data.y), &frame.luma);
+        .add_or_replace_target(data.id, (data.x, data.y), &frame.luma);
     let mut coords = coords.lock().unwrap();
     match data.id {
         1 => coords.set_marker1(Point2::new(data.x as f32, data.y as f32)),
@@ -259,7 +274,7 @@ async fn main() {
         let prediction = loco_detector.predict(&frame.luma);
         tracker
             .tracker
-            .add_target(5, prediction.location, &frame.luma);
+            .add_or_replace_target(5, prediction.location, &frame.luma);
     };
     let marker1_detector = object_detection::ObjectDetection::new("res/marker1".to_string());
     {
@@ -267,7 +282,7 @@ async fn main() {
         let prediction = marker1_detector.predict(&frame.luma);
         tracker
             .tracker
-            .add_target(1, prediction.location, &frame.luma);
+            .add_or_replace_target(1, prediction.location, &frame.luma);
     };
     let marker2_detector = object_detection::ObjectDetection::new("res/marker2".to_string());
     {
@@ -275,7 +290,7 @@ async fn main() {
         let prediction = marker2_detector.predict(&frame.luma);
         tracker
             .tracker
-            .add_target(2, prediction.location, &frame.luma);
+            .add_or_replace_target(2, prediction.location, &frame.luma);
     };
     let marker3_detector = object_detection::ObjectDetection::new("res/marker3".to_string());
     {
@@ -283,7 +298,7 @@ async fn main() {
         let prediction = marker3_detector.predict(&frame.luma);
         tracker
             .tracker
-            .add_target(3, prediction.location, &frame.luma);
+            .add_or_replace_target(3, prediction.location, &frame.luma);
     };
     let tracker = Arc::new(Mutex::new(tracker));
 
