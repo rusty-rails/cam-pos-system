@@ -3,9 +3,10 @@ use std::error::Error;
 use image::{ImageBuffer, Rgb};
 use serde::{Deserialize, Serialize};
 
-use self::{gif_stream::GifStream, webcam_stream::WebcamStream};
+use self::{gif_stream::GifStream, mjpeg_stream::MJpegStream, webcam_stream::WebcamStream};
 
 pub mod gif_stream;
+pub mod mjpeg_stream;
 pub mod webcam_stream;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -13,6 +14,7 @@ pub mod webcam_stream;
 pub enum VideoSource {
     Webcam(usize),
     Gif(String),
+    MJpeg(String),
 }
 
 impl Default for VideoSource {
@@ -30,6 +32,7 @@ impl VideoSource {
         match source {
             VideoSource::Webcam(index) => Ok(Box::new(WebcamStream::new(index)?)),
             VideoSource::Gif(path) => Ok(Box::new(GifStream::new(path)?)),
+            VideoSource::MJpeg(path) => Ok(Box::new(MJpegStream::new(path)?)),
         }
     }
 }
