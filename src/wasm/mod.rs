@@ -47,5 +47,5 @@ impl TrackerJS {
 #[wasm_bindgen]
 pub fn main(root: web_sys::Element) {
     wasm_logger::init(wasm_logger::Config::default());
-    yew::start_app_in_element::<gui::App>(root);
+    yew::Renderer::<gui::App>::with_root(root).render();
 }
